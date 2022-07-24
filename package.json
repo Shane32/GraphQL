@@ -51,6 +51,7 @@
     "url": "https://github.com/dummy/dummy/issues"
   },
   "dependencies": {
+    "axios": "^0.27.2",
     "react": ">=16 <=17",
     "react-dom": ">=16 <=17"
   },
