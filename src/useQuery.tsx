@@ -1,8 +1,7 @@
-﻿import * as React from 'react';
-import GraphQLClient, { IQueryResponse, IGraphQLError, IQueryResult } from './GraphQLClient';
-import GraphQLContext from './GraphQLContext';
+import * as React from 'react';
+import { IQueryResponse, IGraphQLError, IQueryResult, IGraphQLClient } from './GraphQLClient';
 import GraphQLError from './GraphQLError';
-import GraphQLGuestContext from './GraphQLGuestContext';
+import useGraphQLClient from './useGraphQLClient';
 
 type IUseQueryRet<TResult, TVariables> = {
     data?: TResult | null,
@@ -17,7 +16,7 @@ type IUseQueryRet<TResult, TVariables> = {
 interface IUseQuery {
     <TResult, TVariables>(query: string, options?: {
         guest?: boolean,
-        client?: GraphQLClient,
+        client?: IGraphQLClient | string,
         variables?: TVariables,
         fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
         onCompleted?: (data: TResult) => void,
@@ -27,7 +26,7 @@ interface IUseQuery {
     }): IUseQueryRet<TResult, TVariables>;
     <TResult>(query: string, options?: {
         guest?: boolean,
-        client?: GraphQLClient,
+        client?: IGraphQLClient | string,
         fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
         onCompleted?: (data: TResult) => void,
         onError?: (e: GraphQLError) => void,
@@ -38,7 +37,7 @@ interface IUseQuery {
 
 const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: {
     guest?: boolean,
-    client?: GraphQLClient,
+    client?: IGraphQLClient | string,
     variables?: TVariables,
     fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
     onCompleted?: (data: TResult) => void,
@@ -59,9 +58,7 @@ const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: {
 
     // cleanupRef always executes when useQuery is unloaded
     const cleanupRef = React.useRef<(() => void) | null>(null as any);
-    const clientContext = React.useContext(GraphQLContext);
-    const clientGuestContext = React.useContext(GraphQLGuestContext);
-    const client = (options && options.client) || (options && options.guest ? clientGuestContext : clientContext);
+    const client = useGraphQLClient(options && options.client, options && options.guest);
 
     // call rerender() within a callback to cause a rerender of the page
     const [, setRerender] = React.useState<{}>({});

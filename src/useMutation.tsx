@@ -1,7 +1,6 @@
 ﻿import GraphQLClient, { IQueryResult } from './GraphQLClient';
-import { useContext } from 'react';
-import GraphQLContext from './GraphQLContext';
 import GraphQLError from './GraphQLError';
+import useGraphQLClient from './useGraphQLClient';
 
 type IUseMutation = <TResult, TVariables>(query: string, options?: {
     client?: GraphQLClient,
@@ -9,11 +8,11 @@ type IUseMutation = <TResult, TVariables>(query: string, options?: {
 }) => [(options?: { variables?: TVariables }) => Promise<IQueryResult<TResult>>];
 
 const useMutation: IUseMutation = <TResult, TVariables>(query: string, options?: {
-    client?: GraphQLClient,
+    guest?: boolean,
+    client?: GraphQLClient | string,
     variables?: TVariables,
 }) => {
-    const clientContext = useContext(GraphQLContext);
-    const client = options?.client || clientContext;
+    const client = useGraphQLClient(options && options.client, options && options.guest);
     var ret = (options2?: { variables?: TVariables }) => {
         return client.ExecuteQueryRaw<TResult>(query, options2?.variables || options?.variables).result.then(
             (data) => {

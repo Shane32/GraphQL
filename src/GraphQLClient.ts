@@ -97,7 +97,7 @@ export default class GraphQLClient implements IGraphQLClient {
             url: this.url,
             data: formData,
             responseType: 'text',
-            transformResponse: [data => data],
+            transformResponse: data => data,
             cancelToken: cancelSource.token,
         };
         this.pendingRequests += 1;
