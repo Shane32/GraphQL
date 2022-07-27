@@ -66,7 +66,6 @@
     "@types/react": ">=16 <=17",
     "@types/react-dom": ">=16 <=17",
     "@types/testing-library__jest-dom": "^5.14.5",
-    "@types/testing-library__react": "^10.2.0",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
     "axios": "^0.21.4",
