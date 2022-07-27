@@ -16,5 +16,5 @@ module.exports = {
         }
     },
     verbose: true,
-    testURL: "https://api.zbox.com/"
+    //testURL: "https://api.zbox.com/"
 }
