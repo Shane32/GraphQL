@@ -20,7 +20,7 @@ test('executeQueryRaw', async () => {
     const client = new GraphQLClient({
         url: "https://api.zbox.com/api/graphql",
     });
-    const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>("{ v1 { info { version } } }")
+    const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" });
 
     // simulate API call
     await waitFor(() => expect(requests.length).toEqual(1));
@@ -48,7 +48,7 @@ test('executeQuery', async () => {
     const client = new GraphQLClient({
         url: "https://api.zbox.com/api/graphql",
     });
-    const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }, null>("{ v1 { info { version } } }", null, "no-cache")
+    const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache")
 
     expect(ret.result).toBeNull();
     expect(ret.loading).toBe(true);

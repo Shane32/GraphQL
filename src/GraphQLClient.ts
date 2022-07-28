@@ -1,6 +1,7 @@
 import axiosStatic, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import IGraphQLClient from './IGraphQLClient';
 import IGraphQLConfiguration from './IGraphQLConfiguration';
+import IGraphQLRequest from './IGraphQLRequest';
 import IQueryResponse from './IQueryResponse';
 import IQueryResult from './IQueryResult';
 
@@ -26,6 +27,7 @@ export default class GraphQLClient implements IGraphQLClient {
     private defaultCachePolicy: "no-cache" | "cache-first" | "cache-and-network";
     private defaultCacheTime: number;
     private pendingRequests: number;
+    private activeSubscriptions: number;
 
     public constructor(configuration: IGraphQLConfiguration) {
         this.url = configuration.url;
@@ -39,14 +41,22 @@ export default class GraphQLClient implements IGraphQLClient {
         this.maxCacheSize = configuration.maxCacheSize || (1024 * 1024 * 20); //20MB
         this.axios = axiosStatic.create();
         this.pendingRequests = 0;
+        this.activeSubscriptions = 0;
     }
 
     public GetPendingRequests = () => this.pendingRequests;
 
-    public ExecuteQueryRaw: <T>(query: string, variables?: any) => { result: Promise<IQueryResult<T>>, abort: () => void } = <T>(query: string, variables?: any) => {
+    public GetActiveSubscriptions = () => this.activeSubscriptions;
+
+    public ExecuteQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
         var formData = new FormData();
-        formData.append("query", query);
-        formData.append("variables", JSON.stringify(variables || { }));
+        formData.append("query", request.query);
+        if (request.variables)
+            formData.append("variables", JSON.stringify(request.variables));
+        if (request.operationName)
+            formData.append("operationName", request.operationName);
+        if (request.extensions)
+            formData.append("extensions", JSON.stringify(request.extensions));
         const cancelSource = axiosStatic.CancelToken.source();
         const config: AxiosRequestConfig = {
             method: 'post',
@@ -62,7 +72,7 @@ export default class GraphQLClient implements IGraphQLClient {
             config2 => {
                 return this.axios(config2).then(
                     (data: AxiosResponse<string>) => {
-                        const queryRet = JSON.parse(data.data) as IQueryResult<T>;
+                        const queryRet = JSON.parse(data.data) as IQueryResult<TReturn>;
                         if (queryRet.errors && queryRet.errors.length)
                             queryRet.data = undefined;
                         queryRet.networkError = false;
@@ -71,7 +81,7 @@ export default class GraphQLClient implements IGraphQLClient {
                         return Promise.resolve(queryRet);
                     },
                     (e: AxiosError) => {
-                        const queryRet: IQueryResult<T> = {
+                        const queryRet: IQueryResult<TReturn> = {
                             networkError: true,
                             errors: [{ message: e?.message }],
                             extensions: {
@@ -84,7 +94,7 @@ export default class GraphQLClient implements IGraphQLClient {
                     });
             },
             error => {
-                const queryRet: IQueryResult<T> = {
+                const queryRet: IQueryResult<TReturn> = {
                     networkError: true,
                     errors: [{ message: (typeof(error) === "string") ? error : 'Error initializing request configuration' }],
                     extensions: {
@@ -101,9 +111,9 @@ export default class GraphQLClient implements IGraphQLClient {
         };
     }
 
-    public ExecuteQuery = <TReturn, TVariables>(query: string, variables?: TVariables | null, cacheMode?: "no-cache" | "cache-first" | "cache-and-network") => {
+    public ExecuteQuery = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, cacheMode?: "no-cache" | "cache-first" | "cache-and-network") => {
         cacheMode = cacheMode || this.defaultCachePolicy;
-        const queryAndVariablesString = JSON.stringify({ q: query, v: variables });
+        const queryAndVariablesString = JSON.stringify(request);
         const newEntryFactory = (newEntry: ICacheEntry) => {
             newEntry.response = {
                 result: null,
@@ -112,11 +122,11 @@ export default class GraphQLClient implements IGraphQLClient {
                 refresh: () => {
                     if (newEntry.response.loading) return newEntry.response.resultPromise;
                     newEntry.response.loading = true;
-                    const exec = this.ExecuteQueryRaw(query, variables);
+                    const exec = this.ExecuteQueryRaw<TReturn, TVariables>(request);
                     newEntry.response.resultPromise = exec.result;
                     newEntry.cancelRequest = exec.abort;
                     exec.result.then(data => {
-                        if (data.errors?.length) console.log('got error from ExecuteQueryRaw', { query: query, variables: variables, data: data });
+                        if (data.errors?.length) console.log('got error from ExecuteQueryRaw', { request, data });
                         // ensure that the data has not been force refreshed
                         if (newEntry.response.resultPromise === exec.result) {
                             // set the result and notify subscribers
@@ -183,7 +193,8 @@ export default class GraphQLClient implements IGraphQLClient {
         return newEntry.response as IQueryResponse<TReturn>;
     }
 
-    public ExecuteSubscription = <TReturn, TVariables>(query: string, variables: TVariables | null, onData: (data: IQueryResult<TReturn>) => void, onClose: () => void) => {
+    public ExecuteSubscription = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, onData: (data: IQueryResult<TReturn>) => void, onClose: () => void) => {
+        this.activeSubscriptions += 1;
         const subscriptionId = "1";
         // set up abort
         let aborted = false;
@@ -193,6 +204,7 @@ export default class GraphQLClient implements IGraphQLClient {
         });
         // abort will set aborted and call onClose
         abortPromise.then(() => {
+            this.activeSubscriptions -= 1;
             aborted = true;
             onClose();
         });
@@ -282,12 +294,7 @@ export default class GraphQLClient implements IGraphQLClient {
                                     webSocket.send(JSON.stringify({
                                         id: subscriptionId,
                                         type: "subscribe",
-                                        payload: {
-                                            //operationName: null,
-                                            query: query,
-                                            variables: variables,
-                                            //extensions: extensions,
-                                        }
+                                        payload: request,
                                     }));
                                 }
                             } else if (state === "connected") {

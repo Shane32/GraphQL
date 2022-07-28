@@ -2,6 +2,7 @@ import * as React from 'react';
 import GraphQLError from './GraphQLError';
 import IGraphQLClient from './IGraphQLClient';
 import IGraphQLError from './IGraphQLError';
+import IGraphQLRequest from './IGraphQLRequest';
 import IQueryResponse from './IQueryResponse';
 import IQueryResult from './IQueryResult';
 import useGraphQLClient from './useGraphQLClient';
@@ -16,38 +17,25 @@ type IUseQueryRet<TResult, TVariables> = {
     refetch: (variables?: TVariables) => Promise<IQueryResult<TResult>>,
 };
 
-interface IUseQuery {
-    <TResult, TVariables>(query: string, options?: {
-        guest?: boolean,
-        client?: IGraphQLClient | string,
-        variables?: TVariables,
-        fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
-        onCompleted?: (data: TResult) => void,
-        onError?: (e: GraphQLError) => void,
-        skip?: boolean,
-        autoRefetch?: boolean,
-    }): IUseQueryRet<TResult, TVariables>;
-    <TResult>(query: string, options?: {
-        guest?: boolean,
-        client?: IGraphQLClient | string,
-        fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
-        onCompleted?: (data: TResult) => void,
-        onError?: (e: GraphQLError) => void,
-        skip?: boolean,
-        autoRefetch?: boolean,
-    }): IUseQueryRet<TResult, never>
-}
-
-const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: {
+interface IOptions<TResult, TVariables> {
     guest?: boolean,
     client?: IGraphQLClient | string,
-    variables?: TVariables,
     fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
     onCompleted?: (data: TResult) => void,
     onError?: (e: GraphQLError) => void,
     skip?: boolean,
     autoRefetch?: boolean,
-}) => {
+    variables?: TVariables,
+    operationName?: string,
+    extensions?: {} | null,
+}
+
+interface IUseQuery {
+    <TResult, TVariables>(query: string, options: IOptions<TResult, TVariables>): IUseQueryRet<TResult, TVariables>;
+    <TResult>(query: string, options?: IOptions<TResult, never>): IUseQueryRet<TResult, never>
+}
+
+const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: IOptions<TResult, TVariables>) => {
     // return true the first time this method executes; false afterwards
     const firstRunRef = React.useRef<boolean>(true);
     // currentOnCompleted holds a reference to the most recently updated
@@ -68,9 +56,14 @@ const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: {
     const rerender = () => setRerender({});
 
     const createQueryResponse = (variables?: TVariables) => {
-        variables = variables || options?.variables;
+        const request: IGraphQLRequest<TVariables> = {
+            query,
+            variables: (variables || options?.variables) as any,
+            operationName: options?.operationName,
+            extensions: options?.extensions,
+        };
         if (cleanupRef.current) console.error("cleanupRef already created for createQueryResponse");
-        const ret = client.ExecuteQuery<TResult, TVariables>(query, variables, options?.fetchPolicy || "cache-first");
+        const ret = client.ExecuteQuery<TResult, TVariables>(request, options?.fetchPolicy || "cache-first");
         cleanupRef.current = ret.subscribe(newData => {
             lastDataRef.current = newData;
             rerender();
@@ -86,7 +79,7 @@ const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: {
     // lastVariables1 holds the variables specified within 'options.variables'.
     //   If 'options.autoRefetch' is true, then this will be updated when 'options.variables' is changed.
     //   If 'options.autoRefetch' is false, changing 'options.variables' has no effect unless refetch is called (but still this variable will not change).
-    const lastVariables1 = React.useRef<TVariables | undefined>(options?.variables);
+    const lastVariables1 = React.useRef<TVariables | null | undefined>(options?.variables);
     // A stringified version of lastVariables1
     const lastVariables2 = React.useRef<string | null>(options?.variables ? JSON.stringify(options.variables) : null);
 
@@ -117,7 +110,7 @@ const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: {
     // Refetches the existing query if the query and variables are the same.
     const refresh = (variables?: TVariables) => {
         // determine if the query that needs to execute is different than the one that ran last time
-        variables = variables || options?.variables;
+        variables = (variables || options?.variables) as any;
         const variablesStr = variables ? JSON.stringify(variables) : null;
         let differentQuery =
             !queryResponseRef.current ||                   // if no query executed yet
