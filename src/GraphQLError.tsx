@@ -1,4 +1,5 @@
-﻿import { IQueryResult, IGraphQLError } from './GraphQLClient';
+import IGraphQLError from "./IGraphQLError";
+import IQueryResult from "./IQueryResult";
 
 export default class GraphQLError {
     public graphQLErrors: Array<IGraphQLError> | undefined;

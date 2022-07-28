@@ -1,18 +1,10 @@
-import GraphQLClient, {
-  IGraphQLConfiguration,
-  IQueryOptions,
-  IQueryResponse,
-  IQueryResult,
-  IGraphQLError,
-  IGraphQLClient
-} from './GraphQLClient';
-
+import GraphQLClient from './GraphQLClient';
 import GraphQLContext from './GraphQLContext';
-import GraphQLGuestContext from './GraphQLGuestContext';
+import IGraphQLConfiguration from './IGraphQLConfiguration';
 import GraphQLError from './GraphQLError';
 import useQuery from './useQuery';
 import useMutation from './useMutation';
-import gql from './graphql-tag';
+import gql from './GraphQLTag';
 
 import GraphQLTestClient, {
   ITestQueryResult,
@@ -21,17 +13,20 @@ import GraphQLTestClient, {
   IGraphQLTestConfig
 } from './GraphQLTestClient';
 
+import IQueryResponse from './IQueryResponse';
+import IQueryResult from './IQueryResult';
+import IGraphQLError from './IGraphQLError';
+import IGraphQLClient from './IGraphQLClient';
+
 export {
   GraphQLClient,
   IGraphQLConfiguration,
-  IQueryOptions,
   IQueryResponse,
   IQueryResult,
   IGraphQLError,
   IGraphQLClient,
 
   GraphQLContext,
-  GraphQLGuestContext,
   GraphQLError,
   useQuery,
   useMutation,

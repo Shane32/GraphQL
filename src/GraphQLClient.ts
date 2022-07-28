@@ -1,12 +1,8 @@
 import axiosStatic, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-
-export interface IGraphQLConfiguration {
-    url: string,
-    defaultFetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
-    defaultCacheTime?: number,
-    maxCacheSize?: number,
-    transformRequest?: (request: AxiosRequestConfig) => Promise<AxiosRequestConfig>,
-}
+import IGraphQLClient from './IGraphQLClient';
+import IGraphQLConfiguration from './IGraphQLConfiguration';
+import IQueryResponse from './IQueryResponse';
+import IQueryResult from './IQueryResult';
 
 interface ICacheEntry {
     queryAndVariablesString: string,
@@ -18,66 +14,26 @@ interface ICacheEntry {
     cancelRequest?: () => void,
 }
 
-export interface IQueryOptions<TVariables> {
-    variables?: TVariables | null,
-    cacheMode?: "no-cache" | "cache-first" | "cache-and-network",
-    expires?: number,
-}
-
-export interface IQueryResponse<T> {
-    resultPromise: Promise<IQueryResult<T>>, //executes either now or when the pending query (if any) has completed
-    loading: boolean,
-    result: IQueryResult<T> | null,
-    subscribe: (callback: (result: IQueryResult<T> | null) => void) => (() => void), //returns a callback to release the subscription
-    refresh: () => Promise<IQueryResult<T>>,
-    forceRefresh: () => void,
-    clearAndRefresh: () => void,
-}
-
-export interface IQueryResult<T> {
-    data?: T | null,
-    errors?: Array<IGraphQLError>,
-    extensions?: any,
-    networkError: boolean,
-    size: number,
-}
-
-export interface IGraphQLError {
-    message: string,
-    locations?: Array<{ line: number, column: number }>,
-    path?: Array<string | number>,
-    extensions?: {
-        code?: string,
-        codes?: string[],
-        [key: string]: any,
-    }
-}
-
-export interface IGraphQLClient {
-    GetPendingRequests: () => number;
-    ExecuteQueryRaw: <T>(query: string, variables?: any) => { result: Promise<IQueryResult<T>>, abort: () => void };
-    ExecuteQuery: <TReturn, TVariables>(query: string, variables?: TVariables | null, cacheMode?: "no-cache" | "cache-first" | "cache-and-network") => IQueryResponse<TReturn>;
-    RefreshAll: (force?: boolean) => void;
-    ClearCache: () => void;
-    ResetStore: () => void;
-}
-
 export default class GraphQLClient implements IGraphQLClient {
     private url: string;
+    private webSocketUrl: string;
     private axios: AxiosInstance;
     private cache: Map<string, ICacheEntry>;
     private cacheSize: number;
     private maxCacheSize: number;
     private transformRequest?: (request: AxiosRequestConfig) => Promise<AxiosRequestConfig>;
+    private generatePayload?: () => Promise<{}>;
     private defaultCachePolicy: "no-cache" | "cache-first" | "cache-and-network";
     private defaultCacheTime: number;
     private pendingRequests: number;
 
     public constructor(configuration: IGraphQLConfiguration) {
         this.url = configuration.url;
+        this.webSocketUrl = configuration.webSocketUrl || configuration.url;
         this.transformRequest = configuration.transformRequest;
         this.defaultCachePolicy = configuration.defaultFetchPolicy || "cache-first";
         this.defaultCacheTime = configuration.defaultCacheTime !== undefined ? configuration.defaultCacheTime : (24 /* hours */ * 60 /* minutes */ * 60 /* seconds */ * 1000 /* milliseconds */);
+        this.generatePayload = configuration.generatePayload;
         this.cache = new Map<string, ICacheEntry>();
         this.cacheSize = 0;
         this.maxCacheSize = configuration.maxCacheSize || (1024 * 1024 * 20); //20MB
@@ -226,6 +182,159 @@ export default class GraphQLClient implements IGraphQLClient {
         }
         return newEntry.response as IQueryResponse<TReturn>;
     }
+
+    public ExecuteSubscription = <TReturn, TVariables>(query: string, variables: TVariables | null, onData: (data: IQueryResult<TReturn>) => void, onClose: () => void) => {
+        const subscriptionId = "1";
+        // set up abort
+        let aborted = false;
+        let doAbort: () => void = null!;
+        const abortPromise = new Promise<void>(doAbort2 => {
+            doAbort = doAbort2;
+        });
+        // abort will set aborted and call onClose
+        abortPromise.then(() => {
+            aborted = true;
+            onClose();
+        });
+        // set up data push
+        const doData = (data: IQueryResult<TReturn>) => {
+            if (!aborted)
+                onData(data);
+        };
+        // set up error close
+        const doError = (error: any) => {
+            if (aborted)
+                return;
+            const queryRet: IQueryResult<TReturn> = {
+                networkError: true,
+                errors: [{ message: (typeof (error) === "string") ? error : 'Error generating websocket connection payload' }],
+                extensions: {
+                    underlyingError: error,
+                },
+                size: 1000,
+            };
+            onData(queryRet);
+            doAbort();
+        }
+
+        // set up connection promise
+        const connectionPromise = new Promise<void>(
+            (resolveConnection, rejectConnection) => {
+                let connectionResolved = false;
+                abortPromise.then(() => {
+                    if (!connectionResolved) {
+                        connectionResolved = true;
+                        rejectConnection();
+                    }
+                })
+                // attempt to generate the connection payload
+                const payloadPromise = this.generatePayload ? this.generatePayload() : Promise.resolve(undefined);
+                payloadPromise.then(
+                    payload => {
+                        if (aborted)
+                            return;
+                        // connect to the websocket endpoint
+                        const webSocket = new WebSocket(this.webSocketUrl, "graphql-transport-ws");
+                        // set up abort/close
+                        abortPromise.then(() => {
+                            webSocket.close();
+                        });
+                        // set up state machine
+                        let state: "opening" | "connected" = "opening";
+                        // when connection is opened, send connection init message
+                        webSocket.onopen = () => {
+                            if (aborted)
+                                return;
+                            const message = {
+                                type: 'connection_init',
+                                payload: payload,
+                            };
+                            webSocket.send(JSON.stringify(message));
+                        };
+                        // when message received, process it
+                        webSocket.onmessage = (ev) => {
+                            // parse the incoming message
+                            if (aborted)
+                                return;
+                            if (typeof ev.data !== "string")
+                                doError("WebSocket data is not string");
+                            let message: any;
+                            try {
+                                message = JSON.parse(ev.data);
+                            } catch {
+                                doError("WebSocket message is not valid JSON");
+                            }
+                            if (message === null)
+                                doError("WebSocket message is null");
+
+                            // process message based on state machine
+                            if (message.type === "ping") {
+                                webSocket.send(JSON.stringify({ type: "pong" }));
+                            } else if (state === "opening") {
+                                if (message.type !== "connection_ack")
+                                    doError("Invalid connection response from WebSocket server");
+                                else {
+                                    state = "connected";
+                                    if (!connectionResolved) {
+                                        connectionResolved = true;
+                                        resolveConnection();
+                                    }
+                                    webSocket.send(JSON.stringify({
+                                        id: subscriptionId,
+                                        type: "subscribe",
+                                        payload: {
+                                            //operationName: null,
+                                            query: query,
+                                            variables: variables,
+                                            //extensions: extensions,
+                                        }
+                                    }));
+                                }
+                            } else if (state === "connected") {
+                                if (message.type === "next") {
+                                    if (!message.payload || (!message.payload.data && !message.payload.errors) || message.id !== subscriptionId) {
+                                        doError("Invalid payload for 'next' packet");
+                                    } else {
+                                        doData({
+                                            networkError: false,
+                                            size: (ev.data as string).length,
+                                            data: message.payload.data,
+                                            errors: message.payload.errors,
+                                            extensions: message.payload.extensions,
+                                        });
+                                    }
+                                } else if (message.type === "error") {
+                                    if (!message.payload || message.id !== subscriptionId)
+                                        doError("Invalid payload for 'error' packet");
+                                    doData({
+                                        networkError: false,
+                                        size: (ev.data as string).length,
+                                        errors: message.payload,
+                                    });
+                                    doAbort();
+                                } else if (message.type === "complete") {
+                                    if (message.id !== subscriptionId)
+                                        doError("Invalid payload for 'complete' packet");
+                                    doAbort();
+                                }
+                            }
+                        };
+                        // when websocket closed, notify caller (only raises error if not closed from this end)
+                        webSocket.onclose = () => {
+                            doError("WebSocket connection unexpectedly closed");
+                        };
+                    },
+                    // when failed to generate payload, notify caller
+                    error => {
+                        doError(error);
+                    });
+            });
+
+        return {
+            connected: connectionPromise,
+            abort: doAbort,
+        };
+    };
 
     public RefreshAll = (force?: boolean) => {
         // expire all cache entries

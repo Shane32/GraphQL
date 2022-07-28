@@ -1,6 +1,6 @@
 import { useContext } from "react";
-import { IGraphQLClient } from "./GraphQLClient";
 import GraphQLContext from "./GraphQLContext";
+import IGraphQLClient from "./IGraphQLClient";
 
 const useGraphQLClient = (client?: IGraphQLClient | string, guest?: boolean) => {
     const context = useContext(GraphQLContext);

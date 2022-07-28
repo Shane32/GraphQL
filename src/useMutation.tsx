@@ -1,5 +1,6 @@
-﻿import GraphQLClient, { IQueryResult } from './GraphQLClient';
+import GraphQLClient from './GraphQLClient';
 import GraphQLError from './GraphQLError';
+import IQueryResult from './IQueryResult';
 import useGraphQLClient from './useGraphQLClient';
 
 type IUseMutation = <TResult, TVariables>(query: string, options?: {
