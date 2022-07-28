@@ -1,6 +1,9 @@
 import * as React from 'react';
-import { IQueryResponse, IGraphQLError, IQueryResult, IGraphQLClient } from './GraphQLClient';
 import GraphQLError from './GraphQLError';
+import IGraphQLClient from './IGraphQLClient';
+import IGraphQLError from './IGraphQLError';
+import IQueryResponse from './IQueryResponse';
+import IQueryResult from './IQueryResult';
 import useGraphQLClient from './useGraphQLClient';
 
 type IUseQueryRet<TResult, TVariables> = {

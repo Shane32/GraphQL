@@ -8,6 +8,7 @@ import useQuery from '../src/useQuery'
 import { waitFor, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 import * as sinon from 'sinon';
+import axios from 'axios'
 //import * as pretty from 'pretty'
 
 // https://reactjs.org/docs/testing-recipes.html
