@@ -29,7 +29,7 @@ jobs:
       - name: Install modules - actor ${{ github.actor }} - version ${{ github.run_number }}
         run: npm ci
       - name: Install react
-        run: npm install react@${{ matrix.react }} react-dom@${{ matrix.react }} @types/react@${{ matrix.react }} @types/react-dom${{ matrix.react }} --save-dev
+        run: npm install react@"${{ matrix.react }}" react-dom@"${{ matrix.react }}" @types/react@"${{ matrix.react }}" @types/react-dom@"${{ matrix.react }}" --save-dev
       - name: Build
         run: npm run build
       - name: Run tests
