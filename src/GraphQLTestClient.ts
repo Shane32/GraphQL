@@ -1,57 +1,46 @@
-import { IGraphQLClient, IGraphQLError, IQueryResponse, IQueryResult } from "./GraphQLClient";
+import IGraphQLClient from "./IGraphQLClient";
+import IGraphQLRequest from "./IGraphQLRequest";
+import IGraphQLTestConfig from "./IGraphQLTestConfig";
+import IQueryResponse from "./IQueryResponse";
+import IQueryResult from "./IQueryResult";
+import ITestDynamicQuery from "./ITestDynamicQuery";
+import ITestQuery from "./ITestQuery";
+import ITestQueryResult from "./ITestQueryResult";
 
 function isFunction(functionToCheck: any) {
     return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
 }
 
-export type ITestQueryResult<TResult> = {
-    data?: TResult,
-    errors?: IGraphQLError[],
-};
-
-export interface ITestQuery<TResult, TVariables> {
-    query: string,
-    variables?: TVariables,
-    result: ITestQueryResult<TResult>
-};
-
-export type ITestDynamicQuery<TResult, TVariables> = (arg: { query: string, variables?: TVariables, variablesJson: string | null }) => ITestQueryResult<TResult> | null;
-
-export interface IGraphQLTestConfig {
-    AddTestQuery: <TResult, TVariables>(arg: ITestQuery<TResult, TVariables> | ITestDynamicQuery<TResult, TVariables>) => void;
-}
-
 export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestConfig {
-    private TestQueriesArray: Array<(arg: { query: string, variables?: any, variablesJson: string | null }) => any | null> = [];
+    private TestQueriesArray: Array<ITestDynamicQuery<any, any>> = [];
 
     public AddTestQuery = <TResult, TVariables>(arg: ITestQuery<TResult, TVariables> | ITestDynamicQuery<TResult, TVariables>) => {
         if (isFunction(arg)) {
-            const arg2 = arg as ((arg: { query: string, variables?: TVariables, variablesJson: string | null }) => TResult | null);
-            this.TestQueriesArray = [
-                arg2,
-                ...this.TestQueriesArray
-            ];
+            const arg2 = arg as ITestDynamicQuery<TResult, TVariables>;
+            this.TestQueriesArray.push(arg2);
         }
         else {
-            const arg2 = arg as { query: string, variables?: TVariables, result: TResult };
-            const variablesJson = arg2.variables ? JSON.stringify(arg2.variables) : null;
-            this.TestQueriesArray = [
+            const arg2 = arg as ITestQuery<TResult, TVariables>;
+            this.TestQueriesArray.push(
                 (input) => {
-                    if (arg2.query === input.query && variablesJson === input.variablesJson)
+                    if (arg2.query === input.query &&
+                        (arg2.operationName || null) === (input.operationName || null) &&
+                        JSON.stringify(arg2.variables || null) == JSON.stringify(input.variables || null) &&
+                        JSON.stringify(arg2.extensions || null) == JSON.stringify(input.extensions || null))
                         return arg2.result;
                     return null;
-                },
-                ...this.TestQueriesArray
-            ];
+                });
         }
     };
 
     public GetPendingRequests = () => 0;
 
-    public ExecuteQueryRaw = <T>(query: string, variables?: any) => {
-        const result: T = this.ExecuteTestQuery(query, variables);
+    public GetActiveSubscriptions = () => 0;
+
+    public ExecuteQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
+        const result = this.ExecuteTestQuery<TReturn, TVariables>(request);
         if (!result) {
-            throw Error('No test configured for the requested query - "' + query + '" - ' + JSON.stringify(variables || null));
+            throw Error('No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null));
         }
         return {
             result: Promise.resolve(this.CreateQueryResult(result)),
@@ -59,7 +48,7 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
         };
     }
 
-    private CreateQueryResult = <T>(result: T) => {
+    private CreateQueryResult = <T>(result: ITestQueryResult<T>) => {
         let ret: IQueryResult<T>;
         if (result) {
             ret = {
@@ -81,10 +70,10 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
         return ret;
     }
 
-    public ExecuteQuery = <TReturn, TVariables>(query: string, variables?: TVariables | null, cacheMode?: "no-cache" | "cache-first" | "cache-and-network") => {
-        var queryResult = this.ExecuteTestQuery<TReturn>(query, variables);
+    public ExecuteQuery = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, cacheMode?: "no-cache" | "cache-first" | "cache-and-network") => {
+        var queryResult = this.ExecuteTestQuery<TReturn, TVariables>(request);
         if (!queryResult) {
-            throw Error('No test configured for the requested query - "' + query + '" - ' + JSON.stringify(variables || null));
+            throw Error('No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null));
         }
         var result = this.CreateQueryResult(queryResult);
         var resultPromise = Promise.resolve(result);
@@ -100,22 +89,21 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
         return ret;
     }
 
-    public ExecuteTestQuery: <T>(query: string, variables?: any) => T = (query: string, variables?: any) => {
-        const variablesJson = variables ? JSON.stringify(variables) : null;
+    public ExecuteTestQuery: <TReturn, TVariables>(request: IGraphQLRequest<TVariables>) => ITestQueryResult<TReturn> | null = (request: IGraphQLRequest<any>) => {
         for (let i = 0; i < this.TestQueriesArray.length; i++) {
-            var ret = this.TestQueriesArray[i]({
-                query: query,
-                variables: variables,
-                variablesJson: variablesJson,
-            });
+            var ret = this.TestQueriesArray[i](request);
             if (ret) return ret;
         }
         return null;
     }
 
-    public RefreshAll = (force?: boolean) => { }
+    public RefreshAll = () => { }
 
     public ClearCache = () => { }
 
     public ResetStore = () => { }
+
+    public ExecuteSubscription = () => {
+        throw 'Subscriptions not supported in test environment';
+    }
 }
