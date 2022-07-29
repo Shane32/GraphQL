@@ -1,4 +1,4 @@
-import GraphQLClient, { IGraphQLClient } from "./GraphQLClient";
+import IGraphQLClient from "./IGraphQLClient";
 
 interface IGraphQLContext {
     client: IGraphQLClient;

@@ -6,16 +6,25 @@ import useGraphQLClient from './useGraphQLClient';
 type IUseMutation = <TResult, TVariables>(query: string, options?: {
     client?: GraphQLClient,
     variables?: TVariables,
+    operationName?: string,
+    extensions?: {} | null,
 }) => [(options?: { variables?: TVariables }) => Promise<IQueryResult<TResult>>];
 
 const useMutation: IUseMutation = <TResult, TVariables>(query: string, options?: {
     guest?: boolean,
     client?: GraphQLClient | string,
     variables?: TVariables,
+    operationName?: string,
+    extensions?: {} | null,
 }) => {
     const client = useGraphQLClient(options && options.client, options && options.guest);
     var ret = (options2?: { variables?: TVariables }) => {
-        return client.ExecuteQueryRaw<TResult>(query, options2?.variables || options?.variables).result.then(
+        return client.ExecuteQueryRaw<TResult>({
+            query,
+            variables: (options2?.variables || options?.variables) as any,
+            operationName: options && options.operationName,
+            extensions: options && options.extensions,
+        }).result.then(
             (data) => {
                 if (data.data && !(data.errors && data.errors.length))
                     return Promise.resolve(data);
