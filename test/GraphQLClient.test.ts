@@ -77,3 +77,35 @@ test('executeQuery', async () => {
     expect(result.data).toBeTruthy();
     expect(result.data!.v1.info.version).toEqual("12345");
 })
+
+/* This test works locally, but may not reliable in CI due to slow startup of the GraphQL API
+test('executeSubscription', async () => {
+    const client = new GraphQLClient({
+        url: '',
+        webSocketUrl: 'wss://beta.pokeapi.co/graphql/v1beta',
+    });
+    let receivedData = false;
+    let receivedClose = false;
+    const ret = client.ExecuteSubscription<{ pokemon_v2_version: Array<{ name: string }> }>(
+        {
+            query: 'subscription { pokemon_v2_version { name } }',
+        },
+        data => {
+            console.log('data received: ' + JSON.stringify(data));
+            if (data && data.data && data.data.pokemon_v2_version)
+                receivedData = true;
+        },
+        () => {
+            receivedClose = true;
+        }
+    );
+    await ret.connected;
+
+    waitFor(() => {
+        expect(receivedData).toBeTruthy();
+        expect(receivedClose).toBeTruthy();
+    })
+
+    ret.abort();
+})
+*/
