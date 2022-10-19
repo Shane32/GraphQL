@@ -2,10 +2,10 @@
   "name": "shane-graphql",
   "version": "0.2.2",
   "description": "",
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
+  "main": "dist/cjs/src/index.js",
+  "module": "dist/esm/src/index.js",
   "umd:main": "dist/umd/index.js",
-  "types": "dist/types/index.d.ts",
+  "types": "dist/types/src/index.d.ts",
   "scripts": {
     "postinstall": "husky install",
     "prepublishOnly": "pinst --disable",
