@@ -1,5 +1,6 @@
 import GraphQLClient from './GraphQLClient';
 import GraphQLContext from './GraphQLContext';
+import IGraphQLContext from './IGraphQLContext';
 import IGraphQLConfiguration from './IGraphQLConfiguration';
 import GraphQLError from './GraphQLError';
 import useQuery from './useQuery';
@@ -24,6 +25,7 @@ export {
   IQueryResult,
   IGraphQLError,
   IGraphQLClient,
+  IGraphQLContext,
 
   GraphQLContext,
   GraphQLError,
