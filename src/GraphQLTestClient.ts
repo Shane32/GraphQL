@@ -90,7 +90,7 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     }
 
     public ExecuteTestQuery: <TReturn, TVariables>(request: IGraphQLRequest<TVariables>) => ITestQueryResult<TReturn> | null = (request: IGraphQLRequest<any>) => {
-        for (let i = 0; i < this.TestQueriesArray.length; i++) {
+        for (let i = this.TestQueriesArray.length - 1; i >= 0; i--) {
             var ret = this.TestQueriesArray[i](request);
             if (ret) return ret;
         }
