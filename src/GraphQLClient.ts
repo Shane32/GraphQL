@@ -65,6 +65,7 @@ export default class GraphQLClient implements IGraphQLClient {
             responseType: 'text',
             transformResponse: data => data,
             cancelToken: cancelSource.token,
+            validateStatus: null,
         };
         this.pendingRequests += 1;
         const configPromise = this.transformRequest ? this.transformRequest(config) : Promise.resolve(config);
@@ -72,15 +73,26 @@ export default class GraphQLClient implements IGraphQLClient {
             config2 => {
                 return this.axios(config2).then(
                     (data: AxiosResponse<string>) => {
+                        this.pendingRequests -= 1;
+                        const valid = (data.status >= 200 && data.status < 300) ||
+                            (data.status >= 400 && data.status < 500);
+                        if (!valid) {
+                            const queryRet: IQueryResult<TReturn> = {
+                                networkError: true,
+                                errors: [{ message: data.statusText }],
+                                size: 1000,
+                            };
+                            return Promise.resolve(queryRet);
+                        }
                         const queryRet = JSON.parse(data.data) as IQueryResult<TReturn>;
                         if (queryRet.errors && queryRet.errors.length)
                             queryRet.data = undefined;
                         queryRet.networkError = false;
                         queryRet.size = data.data.length;
-                        this.pendingRequests -= 1;
                         return Promise.resolve(queryRet);
                     },
                     (e: AxiosError) => {
+                        this.pendingRequests -= 1;
                         const queryRet: IQueryResult<TReturn> = {
                             networkError: true,
                             errors: [{ message: e?.message }],
@@ -89,11 +101,23 @@ export default class GraphQLClient implements IGraphQLClient {
                             },
                             size: 1000,
                         };
-                        this.pendingRequests -= 1;
+                        return Promise.resolve(queryRet);
+                    })
+                    .catch(error => {
+                        // if undefined error occurs, rethrow
+                        const queryRet: IQueryResult<TReturn> = {
+                            networkError: true,
+                            errors: [{ message: (typeof (error) === "string") ? error : 'Unknown error' }],
+                            extensions: {
+                                underlyingError: error,
+                            },
+                            size: 1000,
+                        };
                         return Promise.resolve(queryRet);
                     });
             },
             error => {
+                this.pendingRequests -= 1;
                 const queryRet: IQueryResult<TReturn> = {
                     networkError: true,
                     errors: [{ message: (typeof(error) === "string") ? error : 'Error initializing request configuration' }],
@@ -102,7 +126,6 @@ export default class GraphQLClient implements IGraphQLClient {
                     },
                     size: 1000,
                 };
-                this.pendingRequests -= 1;
                 return Promise.resolve(queryRet);
             });
         return {
