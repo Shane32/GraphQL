@@ -1,6 +1,5 @@
 import * as React from 'react'
-import { render } from 'react-dom'
-import { unmountComponentAtNode } from 'react-dom'
+import { render } from '@testing-library/react'
 import { act } from 'react-dom/test-utils'
 import GraphQLClient from '../src/GraphQLClient'
 import GraphQLContext from '../src/GraphQLContext'
@@ -8,18 +7,13 @@ import useQuery from '../src/useQuery'
 import { waitFor, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/extend-expect';
 import * as sinon from 'sinon';
-import axios from 'axios'
-//import * as pretty from 'pretty'
 
 // https://reactjs.org/docs/testing-recipes.html
 
 let xhr: sinon.SinonFakeXMLHttpRequestStatic = null!;
-let container: HTMLDivElement = null!
 let requests: sinon.SinonFakeXMLHttpRequest[] = [];
+
 beforeEach(() => {
-    // setup a DOM element as a render target
-    container = document.createElement('div')
-    document.body.appendChild(container)
     xhr = sinon.useFakeXMLHttpRequest();
     xhr.onCreate = function (request) {
         requests.push(request);
@@ -28,23 +22,33 @@ beforeEach(() => {
 
 afterEach(() => {
     // cleanup on exiting
-    unmountComponentAtNode(container)
-    container.remove()
-    container = null!
     xhr.restore();
+    xhr = null!;
     requests = [];
 })
 
-it('useQuery should work', async () => {
+const StrictMode = (React as any).StrictMode ?? React.Fragment;
+
+const useQueryTest = async (useStrictMode: boolean) => {
     act(() => {
         const client = new GraphQLClient({
             url: "https://api.zbox.com/api/graphql",
         });
-        render(
-            <GraphQLContext.Provider value={{ client }}>
-                <TestUseQuery />
-            </GraphQLContext.Provider>,
-            container);
+        if (useStrictMode) {
+            render(
+                <StrictMode>
+                    <GraphQLContext.Provider value={{ client }}>
+                        <TestUseQuery />
+                    </GraphQLContext.Provider>
+                </StrictMode>
+            );
+        } else {
+            render(
+                <GraphQLContext.Provider value={{ client }}>
+                    <TestUseQuery />
+                </GraphQLContext.Provider>
+            );
+        }
     });
     await waitFor(() => expect(screen.getByText("Loading")).toBeInTheDocument());
     await waitFor(() => expect(requests.length).toEqual(1));
@@ -67,40 +71,8 @@ it('useQuery should work', async () => {
         const result = useQuery<{ v1: { info: { version: string } } }>("{ v1 { info { version } } }", { fetchPolicy: "no-cache" });
         return result.data ? <p>Version: {result.data.v1.info.version}</p> : <p>Loading</p>;
     }
-});
+}
 
-/*
-it('should render the 2 of clubs', () => {
-  act(() => {
-    render(<Card card="2c" />, container);
-  });
-  const img = container.querySelector('img');
-  expect(img?.src).toContain('2C.svg');
-});
+it('useQuery works', () => useQueryTest(false));
 
-it('should match snapshots', () => {
-  act(() => {
-    render(<Card card="2c" />, container)
-  })
-
-  expect(pretty(container.innerHTML)).toMatchInlineSnapshot(
-    `"<img src=\\"2C.svg\\" class=\\" playingcard playingcard_front\\" alt=\\"2c\\">"`
-  ) // gets filled automatically by jest
-
-  act(() => {
-    render(<Card back />, container)
-  })
-
-  expect(pretty(container.innerHTML)).toMatchInlineSnapshot(
-    `"<img src=\\"back.svg\\" class=\\" playingcard playingcard_back\\" alt=\\"back\\">"`
-  ) // gets filled automatically by jest
-
-  act(() => {
-    render(<Card back height={20} />, container)
-  })
-
-  expect(pretty(container.innerHTML)).toMatchInlineSnapshot(
-    `"<img src=\\"back.svg\\" class=\\" playingcard playingcard_back\\" alt=\\"back\\" style=\\"height: 20px;\\">"`
-  ) // gets filled automatically by jest
-})
-*/
+//it('useQuery works with strict mode', () => useQueryTest(true));
