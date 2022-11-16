@@ -19,7 +19,8 @@ jobs:
           - 16
           - 17
           - 18
-
+    env:
+      NODE_OPTIONS: '--openssl-legacy-provider'
     steps:
       - uses: actions/checkout@v2
       - name: Set up Node.js
