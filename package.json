@@ -21,6 +21,9 @@
     "test:cov": "jest --coverage --no-cache --runInBand",
     "addscope": "node tools/packagejson name @Shane32/example-typescript-package"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "publishConfig": {
     "access": "restricted"
   },
