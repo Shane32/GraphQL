@@ -59,7 +59,7 @@ export default class GraphQLClient implements IGraphQLClient {
         const config = new Request(this.url, {
             method: "POST",
             body: formData,
-            signal: cancelSource ? cancelSource.signal : undefined,
+            signal: cancelSource ? cancelSource.signal : null,
         });
 
         this.pendingRequests += 1;
