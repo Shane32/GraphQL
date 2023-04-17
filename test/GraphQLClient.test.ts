@@ -1,18 +1,27 @@
 import { waitFor } from "@testing-library/react";
-import sinon from "sinon";
 import GraphQLClient from "../src/GraphQLClient"
 
-let xhr: sinon.SinonFakeXMLHttpRequestStatic = null!;
-let requests: sinon.SinonFakeXMLHttpRequest[] = [];
+interface IMockFetch {
+    request: Request;
+    resolve: (value: Response | Promise<Response>) => void;
+    reject: (reason?: any) => void;
+}
+let requests: IMockFetch[] = [];
+
 beforeEach(() => {
-    xhr = sinon.useFakeXMLHttpRequest();
-    xhr.onCreate = function (request) {
-        requests.push(request);
-    }
-})
+    jest.spyOn(global, 'fetch').mockImplementation((request, init) => {
+        return new Promise((resolve, reject) => {
+            requests.push({
+                request: new Request(request, init),
+                resolve: resolve,
+                reject: reject,
+            });
+        })
+    });
+
+});
 
 afterEach(() => {
-    xhr.restore();
     requests = [];
 })
 
@@ -24,19 +33,25 @@ test('executeQueryRaw', async () => {
 
     // simulate API call
     await waitFor(() => expect(requests.length).toEqual(1));
-    expect(requests[0].url).toEqual("https://api.zbox.com/api/graphql");
-    expect(requests[0].method).toEqual("POST");
-    const formData = requests[0].requestBody as any as FormData;
+    expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+    expect(requests[0].request.method).toEqual("POST");
+    const formData = await requests[0].request.formData();
     expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
-    requests[0].respond(200, { "Content-Type": "application/json" }, JSON.stringify({
-        "data": {
-            "v1": {
-                "info": {
-                    "version": "12345"
+    requests[0].resolve(new Response(
+        JSON.stringify({
+            "data": {
+                "v1": {
+                    "info": {
+                        "version": "12345"
+                    }
                 }
             }
+        }),
+        {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
         }
-    }));
+    ));
 
     // verify result
     const result = await ret.result;
@@ -55,19 +70,25 @@ test('executeQuery', async () => {
 
     // simulate API call
     await waitFor(() => expect(requests.length).toEqual(1));
-    expect(requests[0].url).toEqual("https://api.zbox.com/api/graphql");
-    expect(requests[0].method).toEqual("POST");
-    const formData = requests[0].requestBody as any as FormData;
+    expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+    expect(requests[0].request.method).toEqual("POST");
+    const formData = await requests[0].request.formData();
     expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
-    requests[0].respond(200, { "Content-Type": "application/json" }, JSON.stringify({
-        "data": {
-            "v1": {
-                "info": {
-                    "version": "12345"
+    requests[0].resolve(new Response(
+        JSON.stringify({
+            "data": {
+                "v1": {
+                    "info": {
+                        "version": "12345"
+                    }
                 }
             }
+        }),
+        {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
         }
-    }));
+    ));
 
     // verify result
     const result = await ret.resultPromise;

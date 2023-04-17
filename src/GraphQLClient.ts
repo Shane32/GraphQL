@@ -1,4 +1,3 @@
-import axiosStatic, { AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import IGraphQLClient from './IGraphQLClient';
 import IGraphQLConfiguration from './IGraphQLConfiguration';
 import IGraphQLRequest from './IGraphQLRequest';
@@ -18,11 +17,10 @@ interface ICacheEntry {
 export default class GraphQLClient implements IGraphQLClient {
     private url: string;
     private webSocketUrl: string;
-    private axios: AxiosInstance;
     private cache: Map<string, ICacheEntry>;
     private cacheSize: number;
     private maxCacheSize: number;
-    private transformRequest?: (request: AxiosRequestConfig) => Promise<AxiosRequestConfig>;
+    private transformRequest?: (request: Request) => Promise<Request>;
     private generatePayload?: () => Promise<{}>;
     private defaultCachePolicy: "no-cache" | "cache-first" | "cache-and-network";
     private defaultCacheTime: number;
@@ -39,7 +37,6 @@ export default class GraphQLClient implements IGraphQLClient {
         this.cache = new Map<string, ICacheEntry>();
         this.cacheSize = 0;
         this.maxCacheSize = configuration.maxCacheSize || (1024 * 1024 * 20); //20MB
-        this.axios = axiosStatic.create();
         this.pendingRequests = 0;
         this.activeSubscriptions = 0;
     }
@@ -57,22 +54,20 @@ export default class GraphQLClient implements IGraphQLClient {
             formData.append("operationName", request.operationName);
         if (request.extensions)
             formData.append("extensions", JSON.stringify(request.extensions));
-        const cancelSource = axiosStatic.CancelToken.source();
-        const config: AxiosRequestConfig = {
-            method: 'post',
-            url: this.url,
-            data: formData,
-            responseType: 'text',
-            transformResponse: data => data,
-            cancelToken: cancelSource.token,
-            validateStatus: null,
-        };
+
+        const cancelSource = typeof AbortController === "undefined" ? undefined : new AbortController();
+        const config = new Request(this.url, {
+            method: "POST",
+            body: formData,
+            signal: cancelSource ? cancelSource.signal : null,
+        });
+
         this.pendingRequests += 1;
         const configPromise = this.transformRequest ? this.transformRequest(config) : Promise.resolve(config);
         const ret = configPromise.then(
             config2 => {
-                return this.axios(config2).then(
-                    (data: AxiosResponse<string>) => {
+                return fetch(config2).then(
+                    (data: Response) => {
                         this.pendingRequests -= 1;
                         const valid = (data.status >= 200 && data.status < 300) ||
                             (data.status >= 400 && data.status < 500);
@@ -84,30 +79,27 @@ export default class GraphQLClient implements IGraphQLClient {
                             };
                             return Promise.resolve(queryRet);
                         }
-                        const queryRet = JSON.parse(data.data) as IQueryResult<TReturn>;
-                        if (queryRet.errors && queryRet.errors.length)
-                            queryRet.data = undefined;
-                        queryRet.networkError = false;
-                        queryRet.size = data.data.length;
-                        return Promise.resolve(queryRet);
-                    },
-                    (e: AxiosError) => {
-                        this.pendingRequests -= 1;
-                        const queryRet: IQueryResult<TReturn> = {
-                            networkError: true,
-                            errors: [{ message: e?.message }],
-                            extensions: {
-                                underlyingError: e,
-                            },
-                            size: 1000,
-                        };
-                        return Promise.resolve(queryRet);
+                        return data.json().then(jsonData => {
+                            const queryRet = jsonData as IQueryResult<TReturn>;
+                            if (queryRet.errors && queryRet.errors.length)
+                                queryRet.data = undefined;
+                            queryRet.networkError = false;
+
+                            const contentLengthHeader = data.headers.get('Content-Length');
+                            if (contentLengthHeader) {
+                                queryRet.size = parseInt(contentLengthHeader, 10);
+                            } else {
+                                queryRet.size = JSON.stringify(jsonData).length;
+                            }
+
+                            return Promise.resolve(queryRet);
+                        });
                     })
                     .catch(error => {
                         // if undefined error occurs, rethrow
                         const queryRet: IQueryResult<TReturn> = {
                             networkError: true,
-                            errors: [{ message: (typeof (error) === "string") ? error : 'Unknown error' }],
+                            errors: [{ message:  (typeof (error) === "string") ? error : (error.message || 'Unknown error') }],
                             extensions: {
                                 underlyingError: error,
                             },
@@ -130,7 +122,7 @@ export default class GraphQLClient implements IGraphQLClient {
             });
         return {
             result: ret,
-            abort: cancelSource.cancel,
+            abort: cancelSource?.abort || (() => { }),
         };
     }
 
