@@ -11,6 +11,9 @@ module.exports = {
             './config/fileTransformer.js',
     },
     globals: {
+        fetch: global.fetch,
+        Request: global.Request,
+        Response: global.Response,
         'ts-jest': {
             tsconfig: 'tsconfig.json'
         }
