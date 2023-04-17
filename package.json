@@ -63,7 +63,6 @@
     "@types/pretty": "^2.0.0",
     "@types/react": "^18.0.25",
     "@types/react-dom": "^18.0.9",
-    "@types/sinon": "^10.0.13",
     "@types/testing-library__jest-dom": "^5.14.5",
     "@typescript-eslint/eslint-plugin": "^4.31.1",
     "@typescript-eslint/parser": "^4.31.1",
