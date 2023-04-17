@@ -84,7 +84,14 @@ export default class GraphQLClient implements IGraphQLClient {
                             if (queryRet.errors && queryRet.errors.length)
                                 queryRet.data = undefined;
                             queryRet.networkError = false;
-                            queryRet.size = JSON.stringify(jsonData).length;
+
+                            const contentLengthHeader = data.headers.get('Content-Length');
+                            if (contentLengthHeader) {
+                                queryRet.size = parseInt(contentLengthHeader, 10);
+                            } else {
+                                queryRet.size = JSON.stringify(jsonData).length;
+                            }
+
                             return Promise.resolve(queryRet);
                         });
                     })
