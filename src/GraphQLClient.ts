@@ -20,12 +20,13 @@ export default class GraphQLClient implements IGraphQLClient {
     private cache: Map<string, ICacheEntry>;
     private cacheSize: number;
     private maxCacheSize: number;
-    private transformRequest?: (request: Request) => Promise<Request>;
-    private generatePayload?: () => Promise<{}>;
+    private transformRequest?: (request: Request) => Request | PromiseLike<Request>;
+    private generatePayload?: () => {} | PromiseLike<{}>;
     private defaultCachePolicy: "no-cache" | "cache-first" | "cache-and-network";
     private defaultCacheTime: number;
     private pendingRequests: number;
     private activeSubscriptions: number;
+    private asForm: boolean;
 
     public constructor(configuration: IGraphQLConfiguration) {
         this.url = configuration.url;
@@ -39,6 +40,7 @@ export default class GraphQLClient implements IGraphQLClient {
         this.maxCacheSize = configuration.maxCacheSize || (1024 * 1024 * 20); //20MB
         this.pendingRequests = 0;
         this.activeSubscriptions = 0;
+        this.asForm = configuration.asForm || false;
     }
 
     public GetPendingRequests = () => this.pendingRequests;
@@ -46,24 +48,32 @@ export default class GraphQLClient implements IGraphQLClient {
     public GetActiveSubscriptions = () => this.activeSubscriptions;
 
     public ExecuteQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
-        var formData = new FormData();
-        formData.append("query", request.query);
-        if (request.variables)
-            formData.append("variables", JSON.stringify(request.variables));
-        if (request.operationName)
-            formData.append("operationName", request.operationName);
-        if (request.extensions)
-            formData.append("extensions", JSON.stringify(request.extensions));
+        let body;
+
+        if (this.asForm) {
+            const formData = new FormData();
+            formData.append("query", request.query);
+            if (request.variables)
+                formData.append("variables", JSON.stringify(request.variables));
+            if (request.operationName)
+                formData.append("operationName", request.operationName);
+            if (request.extensions)
+                formData.append("extensions", JSON.stringify(request.extensions));
+            body = formData;
+        } else {
+            body = JSON.stringify(request);
+        }
 
         const cancelSource = typeof AbortController === "undefined" ? undefined : new AbortController();
         const config = new Request(this.url, {
             method: "POST",
-            body: formData,
+            body: body,
+            headers: this.asForm ? undefined : { "Content-Type": "application/json" },
             signal: cancelSource ? cancelSource.signal : null,
         });
 
         this.pendingRequests += 1;
-        const configPromise = this.transformRequest ? this.transformRequest(config) : Promise.resolve(config);
+        const configPromise = this.transformRequest ? Promise.resolve(this.transformRequest(config)) : Promise.resolve(config);
         const ret = configPromise.then(
             config2 => {
                 return fetch(config2).then(
@@ -96,7 +106,7 @@ export default class GraphQLClient implements IGraphQLClient {
                         });
                     })
                     .catch(error => {
-                        // if undefined error occurs, rethrow
+                        // if undefined error occurs, encapsulate within a GraphQL response
                         const queryRet: IQueryResult<TReturn> = {
                             networkError: true,
                             errors: [{ message:  (typeof (error) === "string") ? error : (error.message || 'Unknown error') }],
@@ -255,7 +265,7 @@ export default class GraphQLClient implements IGraphQLClient {
                     }
                 })
                 // attempt to generate the connection payload
-                const payloadPromise = this.generatePayload ? this.generatePayload() : Promise.resolve(undefined);
+                const payloadPromise = this.generatePayload ? Promise.resolve(this.generatePayload()) : Promise.resolve(undefined);
                 payloadPromise.then(
                     payload => {
                         if (aborted)

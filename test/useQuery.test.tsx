@@ -39,6 +39,7 @@ const useQueryTest = async (useStrictMode: boolean) => {
     act(() => {
         const client = new GraphQLClient({
             url: "https://api.zbox.com/api/graphql",
+            asForm: true,
         });
         if (useStrictMode) {
             render(
