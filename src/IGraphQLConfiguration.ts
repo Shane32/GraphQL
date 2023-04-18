@@ -48,5 +48,4 @@ interface IGraphQLConfiguration {
     asForm?: boolean,
 }
 
-
 export default IGraphQLConfiguration;
