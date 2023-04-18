@@ -4,8 +4,9 @@ interface IGraphQLConfiguration {
     defaultFetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
     defaultCacheTime?: number,
     maxCacheSize?: number,
-    transformRequest?: (request: Request) => Promise<Request>,
-    generatePayload?: () => Promise<{}>,
+    transformRequest?: (request: Request) => Request | PromiseLike<Request>,
+    generatePayload?: () => {} | PromiseLike<{}>,
+    asForm?: boolean,
 }
 
 export default IGraphQLConfiguration;

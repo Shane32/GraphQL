@@ -9,7 +9,7 @@ const useGraphQLClient = (client?: IGraphQLClient | string, guest?: boolean) => 
         const clientName = (typeof client === "string" && client) || (guest && "guest") || "client";
         client2 = context[clientName];
         if (!client2) {
-            throw `Cannot find GraphQL client '${clientName}'`;
+            throw new Error(`Cannot find GraphQL client '${clientName}'`);
         }
     }
     return client2;
