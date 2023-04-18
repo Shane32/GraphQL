@@ -7,34 +7,97 @@ import IQueryResponse from './IQueryResponse';
 import IQueryResult from './IQueryResult';
 import useGraphQLClient from './useGraphQLClient';
 
+/**
+ * Represents the return type of the `useQuery` hook.
+ * 
+ * @template TResult The expected result type of the query.
+ * @template TVariables The expected variables type of the query.
+ */
 type IUseQueryRet<TResult, TVariables> = {
+    /** The data returned by the query, or null if no data is available. */
     data?: TResult | null,
+    /** An array of GraphQL errors returned by the query, if any. */
     errors?: Array<IGraphQLError>,
+    /** A `GraphQLError` object representing any exception triggered by the query. */
     error?: GraphQLError,
+    /** Additional information returned by the query. */
     extensions?: any,
+    /** Whether a network error occurred while executing the query. */
     networkError?: boolean,
+    /** Whether the query is currently loading. */
     loading: boolean,
+    /**
+     * Refetches the query with the specified variables, or the last variables used if unspecified.
+     * 
+     * @param {TVariables} [variables] The variables to use for the refetched query.
+     * @returns {Promise<IQueryResult<TResult>>} A promise that resolves to the result of the refetched query.
+     */
     refetch: (variables?: TVariables) => Promise<IQueryResult<TResult>>,
 };
 
+/**
+ * Represents the options for the `useQuery` hook.
+ * 
+ * @template TResult The expected result type of the query.
+ * @template TVariables The expected variables type of the query.
+ */
 interface IOptions<TResult, TVariables> {
+    /** Whether to use the guest client. */
     guest?: boolean,
+    /** The client to use for the query, or the name of the client. */
     client?: IGraphQLClient | string,
+    /** The fetch policy to use for the query. */
     fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
+    /** A callback to execute when the query completes successfully. */
     onCompleted?: (data: TResult) => void,
+    /** A callback to execute when the query encounters an error. */
     onError?: (e: GraphQLError) => void,
+    /** Whether to skip execution of the query. */
     skip?: boolean,
+    /** Whether to automatically refetch the query when the query or variables change. */
     autoRefetch?: boolean,
+    /** The variables to use for the query. */
     variables?: TVariables,
+    /** The name of the operation to use for the query. */
     operationName?: string,
+    /** Additional extensions to add to the query. */
     extensions?: {} | null,
 }
 
+/**
+ * Represents the `useQuery` hook.
+ */
 interface IUseQuery {
+    /**
+     * Returns the result of a GraphQL query using the specified options.
+     * 
+     * @template TResult The expected result type of the query.
+     * @template TVariables The expected variables type of the query.
+     * @param {string} query The GraphQL query string.
+     * @param {IOptions<TResult, TVariables>} [options] The options for the query.
+     * @returns {IUseQueryRet<TResult, TVariables>} The result of the query.
+     */
     <TResult, TVariables>(query: string, options: IOptions<TResult, TVariables>): IUseQueryRet<TResult, TVariables>;
+    /**
+     * Returns the result of a GraphQL query using the specified options.
+     * 
+     * @template TResult The expected result type of the query.
+     * @param {string} query The GraphQL query string.
+     * @param {IOptions<TResult, never>} [options] The options for the query.
+     * @returns {IUseQueryRet<TResult, never>} The result of the query.
+     */
     <TResult>(query: string, options?: IOptions<TResult, never>): IUseQueryRet<TResult, never>
 }
 
+/**
+ * Returns the result of a GraphQL query using the specified options.
+ *
+ * @template TResult The expected result type of the query.
+ * @template TVariables The expected variables type of the query.
+ * @param {string} query The GraphQL query string.
+ * @param {IOptions<TResult, TVariables>} [options] The options for the query.
+ * @returns {IUseQueryRet<TResult, TVariables>} The result of the query.
+ */
 const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: IOptions<TResult, TVariables>) => {
     // return true the first time this method executes; false afterwards
     const firstRunRef = React.useRef<boolean>(true);

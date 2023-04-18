@@ -14,6 +14,9 @@ interface ICacheEntry {
     cancelRequest?: () => void,
 }
 
+/**
+ * Represents a client for making GraphQL requests.
+ */
 export default class GraphQLClient implements IGraphQLClient {
     private url: string;
     private webSocketUrl: string;
