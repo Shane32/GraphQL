@@ -1,11 +1,50 @@
+/**
+ * Represents configuration options for making GraphQL requests.
+ */
 interface IGraphQLConfiguration {
+    /**
+     * The URL of the GraphQL API.
+     */
     url: string,
+
+    /**
+     * The URL of the WebSocket endpoint to use for subscriptions.
+     */
     webSocketUrl?: string,
+
+    /**
+     * The default fetch policy to use for queries.
+     */
     defaultFetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
+
+    /**
+     * The default cache time in milliseconds; defaults to 1 day.
+     */
     defaultCacheTime?: number,
+
+    /**
+     * The maximum size of the cache in bytes; defaults to 20 MB.
+     */
     maxCacheSize?: number,
+
+    /**
+     * A function that transforms the request before it is sent.
+     * 
+     * @param request The original request.
+     * @returns The transformed request.
+     */
     transformRequest?: (request: Request) => Request | PromiseLike<Request>,
+
+    /**
+     * A function that generates the payload to be sent with a WebSocket connection request.
+     * 
+     * @returns The payload.
+     */
     generatePayload?: () => {} | PromiseLike<{}>,
+
+    /**
+     * Indicates whether the request should be sent as a form instead of JSON.
+     */
     asForm?: boolean,
 }
 

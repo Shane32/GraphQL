@@ -11,6 +11,12 @@ function isFunction(functionToCheck: any) {
     return functionToCheck && {}.toString.call(functionToCheck) === '[object Function]';
 }
 
+/**
+ * Represents a test client for a GraphQL API.
+ * 
+ * @implements {IGraphQLClient}
+ * @implements {IGraphQLTestConfig}
+ */
 export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestConfig {
     private TestQueriesArray: Array<ITestDynamicQuery<any, any>> = [];
 
