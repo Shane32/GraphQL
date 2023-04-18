@@ -26,7 +26,7 @@ export default class GraphQLClient implements IGraphQLClient {
     private defaultCacheTime: number;
     private pendingRequests: number;
     private activeSubscriptions: number;
-    private asForm: boolean;
+    private asForm?: boolean;
 
     public constructor(configuration: IGraphQLConfiguration) {
         this.url = configuration.url;
@@ -40,7 +40,7 @@ export default class GraphQLClient implements IGraphQLClient {
         this.maxCacheSize = configuration.maxCacheSize || (1024 * 1024 * 20); //20MB
         this.pendingRequests = 0;
         this.activeSubscriptions = 0;
-        this.asForm = configuration.asForm || false;
+        this.asForm = configuration.asForm;
     }
 
     public GetPendingRequests = () => this.pendingRequests;
