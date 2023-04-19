@@ -3,6 +3,7 @@ import IGraphQLConfiguration from './IGraphQLConfiguration';
 import IGraphQLRequest from './IGraphQLRequest';
 import IQueryResponse from './IQueryResponse';
 import IQueryResult from './IQueryResult';
+import IRequest from './IRequest';
 
 interface ICacheEntry {
     queryAndVariablesString: string,
@@ -23,7 +24,7 @@ export default class GraphQLClient implements IGraphQLClient {
     private cache: Map<string, ICacheEntry>;
     private cacheSize: number;
     private maxCacheSize: number;
-    private transformRequest?: (request: Request) => Request | PromiseLike<Request>;
+    private transformRequest?: (request: IRequest) => IRequest | PromiseLike<IRequest>;
     private generatePayload?: () => {} | PromiseLike<{}>;
     private defaultCachePolicy: "no-cache" | "cache-first" | "cache-and-network";
     private defaultCacheTime: number;
@@ -71,13 +72,14 @@ export default class GraphQLClient implements IGraphQLClient {
         // Create a cancel source using the AbortController API, if it is available
         const cancelSource = typeof AbortController === "undefined" ? undefined : new AbortController();
 
-        // Create a new Request object with the URL, method, body, headers, and cancel signal
-        const config = new Request(this.url, {
+        // Create a new IRequest object with the URL, method, body, headers, and cancel signal
+        const config: IRequest = {
+            url: this.url,
             method: "POST",
             body: body,
             headers: this.asForm ? undefined : { "Content-Type": "application/json" },
             signal: cancelSource ? cancelSource.signal : null,
-        });
+        };
 
         // Increment the number of pending requests
         this.pendingRequests += 1;
@@ -86,9 +88,17 @@ export default class GraphQLClient implements IGraphQLClient {
         const configPromise = this.transformRequest ? Promise.resolve(this.transformRequest(config)) : Promise.resolve(config);
 
         // Send the request using fetch, and return a promise that resolves to the response
-        const ret = configPromise.then(
-            config2 => {
-                return fetch(config2).then(
+        const ret = configPromise
+            .then(config2 => {
+                // Create the Request object
+                const config3 = { ...config2 } as any;
+                const url = config3.url;
+                delete config3.url;
+                return new Request(url, config3);
+            })
+            .then(request => {
+                // Start the Fetch operation
+                return fetch(request).then(
                     (data: Response) => {
                         // Decrement the number of pending requests
                         this.pendingRequests -= 1;
