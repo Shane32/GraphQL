@@ -11,9 +11,8 @@ import useGraphQLClient from './useGraphQLClient';
  * Represents the return type of the `useQuery` hook.
  * 
  * @template TResult The expected result type of the query.
- * @template TVariables The expected variables type of the query.
  */
-type IUseQueryRet<TResult, TVariables> = {
+interface IUseQueryRet<TResult> {
     /** The data returned by the query, or null if no data is available. */
     data?: TResult | null,
     /** An array of GraphQL errors returned by the query, if any. */
@@ -27,12 +26,11 @@ type IUseQueryRet<TResult, TVariables> = {
     /** Whether the query is currently loading. */
     loading: boolean,
     /**
-     * Refetches the query with the specified variables, or the last variables used if unspecified.
+     * Refetches the query.
      * 
-     * @param {TVariables} [variables] The variables to use for the refetched query.
      * @returns {Promise<IQueryResult<TResult>>} A promise that resolves to the result of the refetched query.
      */
-    refetch: (variables?: TVariables) => Promise<IQueryResult<TResult>>,
+    refetch: () => Promise<IQueryResult<TResult>>,
 };
 
 /**
@@ -41,17 +39,13 @@ type IUseQueryRet<TResult, TVariables> = {
  * @template TResult The expected result type of the query.
  * @template TVariables The expected variables type of the query.
  */
-interface IOptions<TResult, TVariables> {
+interface IOptions<TVariables> {
     /** Whether to use the guest client. */
     guest?: boolean,
     /** The client to use for the query, or the name of the client. */
     client?: IGraphQLClient | string,
     /** The fetch policy to use for the query. */
     fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
-    /** A callback to execute when the query completes successfully. */
-    onCompleted?: (data: TResult) => void,
-    /** A callback to execute when the query encounters an error. */
-    onError?: (e: GraphQLError) => void,
     /** Whether to skip execution of the query. */
     skip?: boolean,
     /** Whether to automatically refetch the query when the query or variables change. */
@@ -65,31 +59,6 @@ interface IOptions<TResult, TVariables> {
 }
 
 /**
- * Represents the `useQuery` hook.
- */
-interface IUseQuery {
-    /**
-     * Returns the result of a GraphQL query using the specified options.
-     * 
-     * @template TResult The expected result type of the query.
-     * @template TVariables The expected variables type of the query.
-     * @param {string} query The GraphQL query string.
-     * @param {IOptions<TResult, TVariables>} [options] The options for the query.
-     * @returns {IUseQueryRet<TResult, TVariables>} The result of the query.
-     */
-    <TResult, TVariables>(query: string, options: IOptions<TResult, TVariables>): IUseQueryRet<TResult, TVariables>;
-    /**
-     * Returns the result of a GraphQL query using the specified options.
-     * 
-     * @template TResult The expected result type of the query.
-     * @param {string} query The GraphQL query string.
-     * @param {IOptions<TResult, never>} [options] The options for the query.
-     * @returns {IUseQueryRet<TResult, never>} The result of the query.
-     */
-    <TResult>(query: string, options?: IOptions<TResult, never>): IUseQueryRet<TResult, never>
-}
-
-/**
  * Returns the result of a GraphQL query using the specified options.
  *
  * @template TResult The expected result type of the query.
@@ -98,246 +67,68 @@ interface IUseQuery {
  * @param {IOptions<TResult, TVariables>} [options] The options for the query.
  * @returns {IUseQueryRet<TResult, TVariables>} The result of the query.
  */
-const useQuery: IUseQuery = <TResult, TVariables>(query: string, options?: IOptions<TResult, TVariables>) => {
-    // return true the first time this method executes; false afterwards
-    const firstRunRef = React.useRef<boolean>(true);
-    // currentOnCompleted holds a reference to the most recently updated
-    //   delegate for the onCompleted event
-    const currentOnCompleted = React.useRef<((data: TResult) => void) | undefined>();
-    currentOnCompleted.current = options?.onCompleted;
-    // currentOnError holds a reference to the most recently updated
-    //   delegate for the onError event
-    const currentOnError = React.useRef<((e: GraphQLError) => void) | undefined>();
-    currentOnError.current = options?.onError;
-
-    // cleanupRef always executes when useQuery is unloaded
-    const cleanupRef = React.useRef<(() => void) | null>(null as any);
+const useQuery: <TResult, TVariables = unknown>(query: string, options?: IOptions<TVariables>) => IUseQueryRet<TResult> = <TResult, TVariables = unknown>(query: string, options?: IOptions<TVariables>) => {
     const client = useGraphQLClient(options && options.client, options && options.guest);
-
-    // call rerender() within a callback to cause a rerender of the page
-    const [, setRerender] = React.useState<{}>({});
-    const rerender = () => setRerender({});
-
-    const createQueryResponse = (variables?: TVariables) => {
-        const request: IGraphQLRequest<TVariables> = {
+    const currentVariables = options?.variables;
+    const lastQueryResponseRef = React.useRef<IQueryResult<TResult>>();
+    const queryRet = React.useMemo<IQueryResponse<TResult> | null>(
+        () => {
+            // any time the options change, reset any cached returned value
+            lastQueryResponseRef.current = undefined;
+            if (options?.skip)
+                return null;
+            const request: IGraphQLRequest<TVariables> = {
+                query,
+                variables: currentVariables as any,
+                operationName: options?.operationName,
+                extensions: options?.extensions,
+            };
+            return client.ExecuteQuery<TResult, TVariables>(request, options?.fetchPolicy);
+        },
+        [
+            client,
+            options?.skip,
             query,
-            variables: (variables || options?.variables) as any,
-            operationName: options?.operationName,
-            extensions: options?.extensions,
-        };
-        if (cleanupRef.current) console.error("cleanupRef already created for createQueryResponse");
-        const ret = client.ExecuteQuery<TResult, TVariables>(request, options?.fetchPolicy || "cache-first");
-        cleanupRef.current = ret.subscribe(newData => {
-            lastDataRef.current = newData;
-            rerender();
+            JSON.stringify(currentVariables || null),
+            options?.operationName,
+            JSON.stringify(options?.extensions || null),
+            options?.fetchPolicy,
+        ]);
+    const [data, setData] = React.useState(queryRet?.result || null);
+
+    React.useEffect(() => {
+        // subscribe to any updates to this query by calls to refetch
+        const unsubscribe = queryRet?.subscribe((newData) => {
+            setData(newData || null);
         });
-        return ret;
-    }
+        // ensure that the data is up to date (if identical instance, no redrawing will occur)
+        setData(queryRet?.result || null);
+        // unsubscribe when the component is dismounted
+        return unsubscribe;
+    }, [queryRet]);
 
-    // lastQuery holds the current query that should be executed.
-    //   If 'options.autoRefetch' is true, then this will be updated when 'query' is changed.
-    //   If it is false, changing 'query' has no effect unless refetch is called (but still this variable will not change).
-    //   The query cannot be changed by the 'refetch' delegate.
-    const lastQuery = React.useRef<string>(query);
-    // lastVariables1 holds the variables specified within 'options.variables'.
-    //   If 'options.autoRefetch' is true, then this will be updated when 'options.variables' is changed.
-    //   If 'options.autoRefetch' is false, changing 'options.variables' has no effect unless refetch is called (but still this variable will not change).
-    const lastVariables1 = React.useRef<TVariables | null | undefined>(options?.variables);
-    // A stringified version of lastVariables1
-    const lastVariables2 = React.useRef<string | null>(options?.variables ? JSON.stringify(options.variables) : null);
-
-    // Contains the reference to the underlying query response
-    const queryResponseRef = React.useRef<IQueryResponse<TResult> | null>(null);
-    const lastDataRef = React.useRef<IQueryResult<TResult> | null>(null);
-
-    // Unloads the currently loaded response and clears state
-    const clear = () => {
-        if (queryResponseRef.current === null) return;
-        if (cleanupRef.current) {
-            //console.log("cleanupRefOLD - refresh", cleanupRef.current);
-            cleanupRef.current();
-            cleanupRef.current = null;
-        }
-        queryResponseRef.current = null;
-        lastDataRef.current = null;
-        //do not call rerender here
-    }
-
-    // Remembers the actual last query/variables that were executed (since calling refetch can change variables)
-    const queriedQuery = React.useRef<string>(lastQuery.current);
-    const queriedVariables = React.useRef<string | null>(lastVariables2.current);
-
-    // Triggers loading if no query executed yet.
-    // Does nothing if the query is currently loading.
-    // Unloads the old query and runs a new query if the query or variables are different.
-    // Refetches the existing query if the query and variables are the same.
-    const refresh = (variables?: TVariables) => {
-        // determine if the query that needs to execute is different than the one that ran last time
-        variables = (variables || options?.variables) as any;
-        const variablesStr = variables ? JSON.stringify(variables) : null;
-        let differentQuery =
-            !queryResponseRef.current ||                   // if no query executed yet
-            queriedQuery.current !== query ||              // if the query is different
-            queriedVariables.current !== variablesStr;     // if the variables are different
-
-        queriedQuery.current = query;
-        queriedVariables.current = variablesStr;
-
-        let ret: Promise<IQueryResult<TResult>>;
-        if (differentQuery) {
-            if (cleanupRef.current) {
-                cleanupRef.current();
-                cleanupRef.current = null;
-            }
-            queryResponseRef.current = createQueryResponse(variables);
-            ret = queryResponseRef.current.resultPromise;
-            lastDataRef.current = queryResponseRef.current?.result || null;
-        }
-        else {
-            ret = queryResponseRef.current!.refresh();
-        }
-        //do not rerender here (call refreshWithRerender if a rerender is necessary)
-        return ret.then(
-            (data) => {
-                if (data.data && !(data.errors && data.errors.length))
-                    return Promise.resolve(data);
-                return Promise.reject(new GraphQLError(data));
-            });
-    };
-
-    const refreshWithRerender = (variables?: TVariables) => {
-        //console.log('useQuery - refetch', query, options, variables);
-        const ret = refresh(variables);
-        rerender();
-        return ret;
-    }
-
-    // ========= Main code ============
-    // Start by determining if we need to execute a refresh() or clear() or similar
-    if (!queryResponseRef.current) {
-        if (options?.autoRefetch ?? true) {
-            lastQuery.current = query;
-            if (lastVariables1.current !== options?.variables) {
-                lastVariables1.current = options?.variables;
-                lastVariables2.current = options?.variables ? JSON.stringify(options.variables) : null;
-            }
-        }
-        //console.log("RUNNING createQueryResponse");
-        queryResponseRef.current = options?.skip ? null : createQueryResponse();
-        lastDataRef.current = queryResponseRef.current?.result || null;
-    }
-    else {
-        if (options?.autoRefetch ?? true) {
-            let needsRefresh = false;
-            // check if the query is different
-            if (lastQuery.current !== query) {
-                // save the updated query reference
-                needsRefresh = true;
-                lastQuery.current = query;
-            }
-            // check if the variables are different
-            // perform a reference check first
-            if (lastVariables1.current !== options?.variables) {
-                // if the reference is different, use JSON.stringify to perform a deep comparison
-                const newVariablesStr = options?.variables ? JSON.stringify(options.variables) : null;
-                if (lastVariables2.current !== newVariablesStr) {
-                    // save the updated variables reference
-                    needsRefresh = true;
-                    lastVariables2.current = newVariablesStr;
-                }
-                lastVariables1.current = options?.variables;
-            }
-            // if query or variables are different, either perform a refresh if skip is false, or clear if skip is true
-            if (needsRefresh) {
-                if (options?.skip) {
-                    //console.log('useQuery - clear', query, options);
-                    clear();
-                }
-                else {
-                    //console.log('useQuery - refresh', query, options);
-                    refresh();
-                }
-            }
-        }
-    }
-
-    // Executes the onCompleted or onError event handler the first time the data is loaded.
-    // Does not execute a second time, unless everything was unloaded due to skip=true and new query/variables
-    //   being set, and then skip=false or refetch() was called.
-    const anyQueryResponse = !!queryResponseRef.current;
-    React.useEffect(() => {
-        const queryResponse = queryResponseRef.current;
-        if (queryResponse) {
-            queryResponse.resultPromise.then((data) => {
-                if (!data.errors?.length && data.data) {
-                    if (currentOnCompleted.current)
-                        currentOnCompleted.current(data.data);
-                } else {
-                    if (currentOnError.current)
-                        currentOnError.current(new GraphQLError(data));
-                }
-            });
-        }
-    }, [anyQueryResponse]);
-
-    // an effect that only runs/unloads once
-    React.useEffect(() => {
-        return () => {
-            // only run this code once, when the hook is unloaded
-            //console.log("cleanupRefOLD - CLEANUP", cleanupRef.current);
-            if (cleanupRef.current) {
-                cleanupRef.current();
-                cleanupRef.current = null;
-            };
-        };
-    }, []);
-
-    firstRunRef.current = false;
-
-    // ==== create & return state ====
-    const data = lastDataRef.current;
-    const queryResponse = queryResponseRef.current;
-    let ret: IUseQueryRet<TResult, TVariables>;
-    if (!queryResponse) {
-        ret = {
+    // if skipped, return...nothing
+    if (!queryRet) {
+        return {
             loading: false,
-            refetch: refreshWithRerender,
+            refetch: () => Promise.reject(new Error("Cannot refetch a skipped query")),
         };
     }
-    else {
-        const anyErrors = !!(data && data.errors && data.errors.length);
-        if (queryResponse.loading && anyErrors)
-            ret = {
-                loading: true,
-                refetch: refreshWithRerender,
-            };
-        else
-            ret = {
-                ...data,
-                error: data && anyErrors ? new GraphQLError(data) : undefined,
-                loading: queryResponse.loading,
-                refetch: refreshWithRerender,
-            };
-    }
 
-    /*
-    console.log('useQuery', {
-        query: query,
-        options: options,
-        firstRunRef: firstRunRef.current,
-        cleanupRefSet: !!cleanupRef.current,
-        client: client,
-        lastQuery: lastQuery.current,
-        lastVariables1: lastVariables1.current,
-        lastVariables2: lastVariables2.current,
-        queryResponseRef: queryResponseRef.current,
-        lastDataRef: lastDataRef.current,
-        queriedQuery: queriedQuery.current,
-        queriedVariables: queriedVariables.current,
-    }, ret);
-    */
-
-    return ret;
+    // return the query data, unless there was errors and it's reloading
+    const anyErrors = !!(data && data.errors && data.errors.length);
+    if (queryRet.loading && anyErrors)
+        return {
+            loading: true,
+            refetch: queryRet.refresh,
+        };
+    else
+        return {
+            ...data,
+            error: anyErrors ? new GraphQLError(data) : undefined,
+            loading: queryRet.loading,
+            refetch: queryRet.refresh,
+        };
 };
 
 export default useQuery;
