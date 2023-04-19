@@ -2,6 +2,7 @@ import GraphQLClient from './GraphQLClient';
 import GraphQLContext from './GraphQLContext';
 import IGraphQLContext from './IGraphQLContext';
 import IGraphQLConfiguration from './IGraphQLConfiguration';
+import IRequest from './IRequest';
 import GraphQLError from './GraphQLError';
 import useQuery from './useQuery';
 import useMutation from './useMutation';
@@ -19,23 +20,24 @@ import IGraphQLError from './IGraphQLError';
 import IGraphQLClient from './IGraphQLClient';
 
 export {
-  GraphQLClient,
-  IGraphQLConfiguration,
-  IQueryResponse,
-  IQueryResult,
-  IGraphQLError,
-  IGraphQLClient,
-  IGraphQLContext,
+    GraphQLClient,
+    IGraphQLConfiguration,
+    IRequest,
+    IQueryResponse,
+    IQueryResult,
+    IGraphQLError,
+    IGraphQLClient,
+    IGraphQLContext,
 
-  GraphQLContext,
-  GraphQLError,
-  useQuery,
-  useMutation,
-  gql,
+    GraphQLContext,
+    GraphQLError,
+    useQuery,
+    useMutation,
+    gql,
 
-  GraphQLTestClient,
-  ITestQueryResult,
-  ITestQuery,
-  ITestDynamicQuery,
-  IGraphQLTestConfig
+    GraphQLTestClient,
+    ITestQueryResult,
+    ITestQuery,
+    ITestDynamicQuery,
+    IGraphQLTestConfig
 }

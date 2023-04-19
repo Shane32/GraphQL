@@ -1,3 +1,5 @@
+import IRequest from "./IRequest";
+
 /**
  * Represents configuration options for making GraphQL requests.
  */
@@ -33,7 +35,7 @@ interface IGraphQLConfiguration {
      * @param request The original request.
      * @returns The transformed request.
      */
-    transformRequest?: (request: Request) => Request | PromiseLike<Request>,
+    transformRequest?: (request: IRequest) => IRequest | PromiseLike<IRequest>,
 
     /**
      * A function that generates the payload to be sent with a WebSocket connection request.
