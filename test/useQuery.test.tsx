@@ -35,7 +35,7 @@ afterEach(() => {
 
 const StrictMode = (React as any).StrictMode ?? React.Fragment;
 
-const useQueryTest = async (useStrictMode: boolean) => {
+const useQueryTest = async (useStrictMode: boolean, count: number, fetchPolicy: "no-cache" | "cache-first" | "cache-and-network") => {
     act(() => {
         const client = new GraphQLClient({
             url: "https://api.zbox.com/api/graphql",
@@ -58,34 +58,38 @@ const useQueryTest = async (useStrictMode: boolean) => {
         }
     });
     await waitFor(() => expect(screen.getByText("Loading")).toBeInTheDocument());
-    await waitFor(() => expect(requests.length).toEqual(1));
-    expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
-    expect(requests[0].request.method).toEqual("POST");
-    const formData = await requests[0].request.formData();
-    expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
-    requests[0].resolve(new Response(
-        JSON.stringify({
-            "data": {
-                "v1": {
-                    "info": {
-                        "version": "12345"
+    await waitFor(() => expect(requests.length).toEqual(count));
+    for (let i = 0; i < count; i++) {
+        expect(requests[i].request.url).toEqual("https://api.zbox.com/api/graphql");
+        expect(requests[i].request.method).toEqual("POST");
+        const formData = await requests[i].request.formData();
+        expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
+        requests[i].resolve(new Response(
+            JSON.stringify({
+                "data": {
+                    "v1": {
+                        "info": {
+                            "version": "12345"
+                        }
                     }
                 }
+            }),
+            {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
             }
-        }),
-        {
-            status: 200,
-            headers: { "Content-Type": "application/json" }
-        }
-    ));
+        ));
+    }
     await waitFor(() => expect(screen.getByText("Version: 12345")).toBeInTheDocument());
 
     function TestUseQuery() {
-        const result = useQuery<{ v1: { info: { version: string } } }>("{ v1 { info { version } } }", { fetchPolicy: "no-cache" });
+        const result = useQuery<{ v1: { info: { version: string } } }>("{ v1 { info { version } } }", { fetchPolicy: fetchPolicy });
         return result.data ? <p>Version: {result.data.v1.info.version}</p> : <p>Loading</p>;
     }
 }
 
-it('useQuery works', () => useQueryTest(false));
+it('useQuery works', () => useQueryTest(false, 1, "no-cache"));
 
-//it('useQuery works with strict mode', () => useQueryTest(true));
+it('useQuery works with strict mode', () => useQueryTest(true, 2, "no-cache"));
+it('useQuery works with strict mode, cache-first', () => useQueryTest(true, 1, "cache-first"));
+it('useQuery works with strict mode, cache-and-network', () => useQueryTest(true, 1, "cache-and-network"));

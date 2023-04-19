@@ -39,9 +39,10 @@ interface IGraphQLClient {
      *
      * @param request The GraphQL request to execute.
      * @param cacheMode The cache mode to use for the query; uses the client's default cache mode when unspecified.
+     * @param cacheTimeout The cache timeout to use for the query in milliseconds; uses the client's default cache timeout when unspecified.
      * @returns An object that can be used to retrieve the query response, monitor updates to it, or abort it.
      */
-    ExecuteQuery: <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, cacheMode?: "no-cache" | "cache-first" | "cache-and-network") => IQueryResponse<TReturn>;
+    ExecuteQuery: <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, cacheMode?: "no-cache" | "cache-first" | "cache-and-network", cacheTimeout?: number) => IQueryResponse<TReturn>;
 
     /**
      * Executes a GraphQL subscription and returns a promise that resolves when the subscription is connected and a function to abort the subscription.
