@@ -53,6 +53,7 @@ export default class GraphQLClient implements IGraphQLClient {
     public ExecuteQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
         let body;
 
+        // If the request should be sent as a form, create a FormData object and append the necessary fields
         if (this.asForm) {
             const formData = new FormData();
             formData.append("query", request.query);
@@ -63,11 +64,14 @@ export default class GraphQLClient implements IGraphQLClient {
             if (request.extensions)
                 formData.append("extensions", JSON.stringify(request.extensions));
             body = formData;
-        } else {
+        } else { // Otherwise, send the request as a JSON string
             body = JSON.stringify(request);
         }
 
+        // Create a cancel source using the AbortController API, if it is available
         const cancelSource = typeof AbortController === "undefined" ? undefined : new AbortController();
+
+        // Create a new Request object with the URL, method, body, headers, and cancel signal
         const config = new Request(this.url, {
             method: "POST",
             body: body,
@@ -75,15 +79,25 @@ export default class GraphQLClient implements IGraphQLClient {
             signal: cancelSource ? cancelSource.signal : null,
         });
 
+        // Increment the number of pending requests
         this.pendingRequests += 1;
+
+        // If a transformRequest function is defined, apply it to the request configuration
         const configPromise = this.transformRequest ? Promise.resolve(this.transformRequest(config)) : Promise.resolve(config);
+
+        // Send the request using fetch, and return a promise that resolves to the response
         const ret = configPromise.then(
             config2 => {
                 return fetch(config2).then(
                     (data: Response) => {
+                        // Decrement the number of pending requests
                         this.pendingRequests -= 1;
+
+                        // Check if the response status is valid (between 200 and 299 or between 400 and 499)
                         const valid = (data.status >= 200 && data.status < 300) ||
                             (data.status >= 400 && data.status < 500);
+
+                        // If the response status is not valid, create a new query result object with the error message
                         if (!valid) {
                             const queryRet: IQueryResult<TReturn> = {
                                 networkError: true,
@@ -92,12 +106,15 @@ export default class GraphQLClient implements IGraphQLClient {
                             };
                             return Promise.resolve(queryRet);
                         }
+
+                        // Parse the JSON data and create a new query result object with the data and any errors
                         return data.json().then(jsonData => {
                             const queryRet = jsonData as IQueryResult<TReturn>;
                             if (queryRet.errors && queryRet.errors.length)
                                 queryRet.data = undefined;
                             queryRet.networkError = false;
 
+                            // Calculate the size of the response and set it on the query result object
                             const contentLengthHeader = data.headers.get('Content-Length');
                             if (contentLengthHeader) {
                                 queryRet.size = parseInt(contentLengthHeader, 10);
@@ -109,10 +126,10 @@ export default class GraphQLClient implements IGraphQLClient {
                         });
                     })
                     .catch(error => {
-                        // if undefined error occurs, encapsulate within a GraphQL response
+                        // If an error occurs, create a new query result object with the error message and the underlying error
                         const queryRet: IQueryResult<TReturn> = {
                             networkError: true,
-                            errors: [{ message:  (typeof (error) === "string") ? error : (error.message || 'Unknown error') }],
+                            errors: [{ message: (typeof (error) === "string") ? error : (error.message || 'Unknown error from Fetch API') }],
                             extensions: {
                                 underlyingError: error,
                             },
@@ -121,11 +138,12 @@ export default class GraphQLClient implements IGraphQLClient {
                         return Promise.resolve(queryRet);
                     });
             },
+            // If an error occurs while creating the request configuration, create a new query result object with the error message and the underlying error
             error => {
                 this.pendingRequests -= 1;
                 const queryRet: IQueryResult<TReturn> = {
                     networkError: true,
-                    errors: [{ message: (typeof(error) === "string") ? error : 'Error initializing request configuration' }],
+                    errors: [{ message: (typeof (error) === "string") ? error : 'Error initializing request configuration' }],
                     extensions: {
                         underlyingError: error,
                     },
@@ -133,78 +151,96 @@ export default class GraphQLClient implements IGraphQLClient {
                 };
                 return Promise.resolve(queryRet);
             });
+
+        // Return an object with the result promise and an abort function that cancels the request
+        const doAbort: () => void = cancelSource?.abort || (() => { });
         return {
             result: ret,
-            abort: cancelSource?.abort || (() => { }),
+            abort: doAbort,
         };
     }
 
-    public ExecuteQuery = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, cacheMode?: "no-cache" | "cache-first" | "cache-and-network") => {
+    public ExecuteQuery = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, cacheMode?: "no-cache" | "cache-first" | "cache-and-network", cacheTimeout?: number) => {
+        // Set cache mode based on input or default cache policy
         cacheMode = cacheMode || this.defaultCachePolicy;
+        // Set cache timeout based on input or default cache time
+        const cacheTimeoutValue = cacheTimeout !== undefined ? cacheTimeout : this.defaultCacheTime;
+        // Stringify the request object
         const queryAndVariablesString = JSON.stringify(request);
+
+        // A factory function for creating new cache entries
         const newEntryFactory = (newEntry: ICacheEntry) => {
+            // Define the response object for the cache entry
             newEntry.response = {
                 result: null,
                 resultPromise: null as any,
                 loading: false,
+                // Refresh function for executing the query and updating the cache entry
                 refresh: () => {
-                    if (newEntry.response.loading) return newEntry.response.resultPromise;
+                    // If already loading, return the promise representing the currently-executing request
+                    if (newEntry.response.loading)
+                        return newEntry.response.resultPromise;
+                    // Otherwise, start executing the request
                     newEntry.response.loading = true;
                     const exec = this.ExecuteQueryRaw<TReturn, TVariables>(request);
                     newEntry.response.resultPromise = exec.result;
                     newEntry.cancelRequest = exec.abort;
+                    // When the query result is resolved (note: data may contain a sucessful or failed response; the promise will not be rejected)
                     exec.result.then(data => {
-                        if (data.errors?.length) console.log('got error from ExecuteQueryRaw', { request, data });
-                        // ensure that the data has not been force refreshed
+                        // Check if the query has been force refreshed then discard the original result; otherwise:
                         if (newEntry.response.resultPromise === exec.result) {
-                            // set the result and notify subscribers
+                            // Update the cache entry and notify subscribers
                             newEntry.response.result = data;
                             newEntry.response.loading = false;
                             newEntry.cancelRequest = undefined;
                             if (data.errors && data.errors.length) {
+                                // If there were any errors, immediately expire the cache entry
                                 newEntry.expires = 0;
                             } else {
+                                // Set the cache entry size
                                 this.SetCacheEntrySize(newEntry, data.size + 1000);
+                                // Set the cache entry expiration date
                                 if (cacheMode !== "no-cache")
-                                    newEntry.expires = Date.now() + this.defaultCacheTime;
+                                    newEntry.expires = Date.now() + cacheTimeoutValue;
                             }
+                            // Notify all subscribers of the new data
                             newEntry.subscribers.forEach(subscriber => {
                                 subscriber(data);
                             });
                         }
                     });
+                    // Return a promise that resolves when the GraphQL operation is complete
+                    // (note: data may contain a sucessful or failed response; the promise will not be rejected)
                     return exec.result;
                 },
+                // Function to force refresh the cache entry
                 forceRefresh: () => {
+                    // If in the process of loading, terminate the request, discard the results and retry
                     if (newEntry.response.loading) {
                         if (newEntry.cancelRequest) {
-                            console.log('forceRefresh canceling request', newEntry);
                             newEntry.cancelRequest();
                         }
                         newEntry.cancelRequest = undefined;
                         newEntry.response.loading = false;
                         newEntry.response.resultPromise = null as any;
+                        // No need to notify subscribers because it's still loading anyway; no data would have been sent
                     }
+                    // Execute the GraphQL request again
                     newEntry.response.refresh();
                 },
+                // Function to clear and refresh the cache entry
                 clearAndRefresh: () => {
-                    if (newEntry.response.loading) {
-                        if (newEntry.cancelRequest) {
-                            console.log('clearAndRefresh canceling request', newEntry);
-                            newEntry.cancelRequest();
-                        }
-                        newEntry.cancelRequest = undefined;
-                        newEntry.response.loading = false;
-                        newEntry.response.resultPromise = null as any;
-                    }
-                    newEntry.response.refresh();
-                    if (newEntry.response.loading) {
+                    // Perform force-refresh
+                    newEntry.response.forceRefresh();
+                    // Push out null result to subscribers if anything was sent out already
+                    if (newEntry.response.result !== null) {
                         newEntry.response.result = null;
                         newEntry.subscribers.forEach(subscriber => {
                             subscriber(null);
                         });
                     }
                 },
+                // Function to subscribe to cache entry updates
                 subscribe: callback => {
                     newEntry.subscribers.push(callback);
                     return () => {
@@ -212,12 +248,18 @@ export default class GraphQLClient implements IGraphQLClient {
                     };
                 }
             };
+            // Initiate the GraphQL call
             newEntry.response.refresh();
         };
+        // Get or create a cache entry using the factory function
         const newEntry = this.GetOrCreateCacheEntry(queryAndVariablesString, newEntryFactory, cacheMode === "no-cache");
+        // If there are no subscribers and the cache mode is "cache-and-network" or the cache entry has expired, refresh the cache entry
+        // (note: 'no-cache' would have already created a new request)
+        // But for "cache-first" mode, or subscribers to a request whose entry has not expired, does not need a refresh
         if (newEntry.subscribers.length === 0 && (cacheMode === "cache-and-network" || newEntry.expires < Date.now())) {
             newEntry.response.refresh();
         }
+        // Return the cache entry's response object as an IQueryResponse
         return newEntry.response as IQueryResponse<TReturn>;
     }
 

@@ -26,7 +26,7 @@ interface IUseQueryRet<TResult> {
     /** Whether the query is currently loading. */
     loading: boolean,
     /**
-     * Refetches the query.
+     * Refetches the query unless it is already loading.
      * 
      * @returns {Promise<IQueryResult<TResult>>} A promise that resolves to the result of the refetched query.
      */
