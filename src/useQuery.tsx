@@ -115,19 +115,29 @@ const useQuery: <TResult, TVariables = unknown>(query: string, options?: IOption
         };
     }
 
+    // prep refresh function to throw a GraphQLError if there were any query errors
+    const refresh = () => {
+        return queryRet.refresh().then(
+            (data) => {
+                if (data.data && !(data.errors && data.errors.length))
+                    return Promise.resolve(data);
+                return Promise.reject(new GraphQLError(data));
+            })
+    };
+
     // return the query data, unless there was errors and it's reloading
     const anyErrors = !!(data && data.errors && data.errors.length);
     if (queryRet.loading && anyErrors)
         return {
             loading: true,
-            refetch: queryRet.refresh,
+            refetch: refresh,
         };
     else
         return {
             ...data,
             error: anyErrors ? new GraphQLError(data) : undefined,
             loading: queryRet.loading,
-            refetch: queryRet.refresh,
+            refetch: refresh,
         };
 };
 
