@@ -84,14 +84,14 @@ const useQuery: <TResult, TVariables = unknown>(
         // any time the options change, reset any cached returned value
         lastQueryResponseRef.current = undefined;
         if (options?.skip) return null;
-        const request: IGraphQLRequest<TVariables> = {
+        const request = {
             query,
-            variables: currentVariables as any,
+            variables: currentVariables,
             operationName: options?.operationName,
             extensions: options?.extensions,
         };
         return client.ExecuteQuery<TResult, TVariables>(
-            request,
+            request as any,
             options?.fetchPolicy
         );
     }, [
