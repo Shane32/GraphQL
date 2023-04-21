@@ -37,9 +37,7 @@ test("executeQueryRaw with json", async () => {
     expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
     expect(requests[0].request.method).toEqual("POST");
     const formData = await requests[0].request.json();
-    expect(JSON.stringify(formData)).toEqual(
-        '{"query":"{ v1 { info { version } } }"}'
-    );
+    expect(JSON.stringify(formData)).toEqual('{"query":"{ v1 { info { version } } }"}');
     requests[0].resolve(
         new Response(
             JSON.stringify({
@@ -77,9 +75,7 @@ test("executeQueryRaw with json and alt response type", async () => {
     expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
     expect(requests[0].request.method).toEqual("POST");
     const formData = await requests[0].request.json();
-    expect(JSON.stringify(formData)).toEqual(
-        '{"query":"{ v1 { info { version } } }"}'
-    );
+    expect(JSON.stringify(formData)).toEqual('{"query":"{ v1 { info { version } } }"}');
     requests[0].resolve(
         new Response(
             JSON.stringify({
@@ -150,10 +146,7 @@ test("executeQuery", async () => {
         url: "https://api.zbox.com/api/graphql",
         asForm: true,
     });
-    const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }>(
-        { query: "{ v1 { info { version } } }" },
-        "no-cache"
-    );
+    const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache");
 
     expect(ret.result).toBeNull();
     expect(ret.loading).toBe(true);

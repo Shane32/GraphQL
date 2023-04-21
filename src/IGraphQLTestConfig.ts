@@ -12,11 +12,7 @@ interface IGraphQLTestConfig {
      * @template TVariables The type of the query variables, if any.
      * @param arg The test query to add.
      */
-    AddTestQuery: <TResult, TVariables = undefined>(
-        arg:
-            | ITestQuery<TResult, TVariables>
-            | ITestDynamicQuery<TResult, TVariables>
-    ) => void;
+    AddTestQuery: <TResult, TVariables = undefined>(arg: ITestQuery<TResult, TVariables> | ITestDynamicQuery<TResult, TVariables>) => void;
 }
 
 export default IGraphQLTestConfig;

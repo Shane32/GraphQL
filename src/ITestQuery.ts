@@ -7,10 +7,7 @@ import ITestQueryResult from "./ITestQueryResult";
  * @template TResult The type of the query result.
  * @template TVariables The type of the query variables, if any.
  */
-type ITestQuery<
-    TResult,
-    TVariables = undefined
-> = IGraphQLRequest<TVariables> & {
+type ITestQuery<TResult, TVariables = undefined> = IGraphQLRequest<TVariables> & {
     /**
      * The fixed result for the test query.
      */

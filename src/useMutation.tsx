@@ -43,10 +43,7 @@ const useMutation: IUseMutation = <TResult, TVariables>(
         extensions?: {} | null;
     }
 ) => {
-    const client = useGraphQLClient(
-        options && options.client,
-        options && options.guest
-    );
+    const client = useGraphQLClient(options && options.client, options && options.guest);
     /**
      * Executes the mutation with the specified variables.
      *
@@ -63,8 +60,7 @@ const useMutation: IUseMutation = <TResult, TVariables>(
                 extensions: options && options.extensions,
             })
             .result.then((data) => {
-                if (data.data && !(data.errors && data.errors.length))
-                    return Promise.resolve(data);
+                if (data.data && !(data.errors && data.errors.length)) return Promise.resolve(data);
                 return Promise.reject(new GraphQLError(data));
             });
     };

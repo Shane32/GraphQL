@@ -34,10 +34,7 @@ export default class GraphQLError {
         this.response = data;
 
         // Set the error message based on the response
-        this.message =
-            data.errors && data.errors.length
-                ? data.errors[0].message
-                : "Unknown error";
+        this.message = data.errors && data.errors.length ? data.errors[0].message : "Unknown error";
         if (!data.networkError) {
             this.graphQLErrors = data.errors;
         }

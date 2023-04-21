@@ -24,14 +24,9 @@ export default class GraphQLClient implements IGraphQLClient {
     private cache: Map<string, ICacheEntry>;
     private cacheSize: number;
     private maxCacheSize: number;
-    private transformRequest?: (
-        request: IRequest
-    ) => IRequest | PromiseLike<IRequest>;
+    private transformRequest?: (request: IRequest) => IRequest | PromiseLike<IRequest>;
     private generatePayload?: () => {} | PromiseLike<{}>;
-    private defaultCachePolicy:
-        | "no-cache"
-        | "cache-first"
-        | "cache-and-network";
+    private defaultCachePolicy: "no-cache" | "cache-first" | "cache-and-network";
     private defaultCacheTime: number;
     private pendingRequests: number;
     private activeSubscriptions: number;
@@ -41,15 +36,11 @@ export default class GraphQLClient implements IGraphQLClient {
         this.url = configuration.url;
         this.webSocketUrl = configuration.webSocketUrl || configuration.url;
         this.transformRequest = configuration.transformRequest;
-        this.defaultCachePolicy =
-            configuration.defaultFetchPolicy || "cache-first";
+        this.defaultCachePolicy = configuration.defaultFetchPolicy || "cache-first";
         this.defaultCacheTime =
             configuration.defaultCacheTime !== undefined
                 ? configuration.defaultCacheTime
-                : 24 /* hours */ *
-                  60 /* minutes */ *
-                  60 /* seconds */ *
-                  1000; /* milliseconds */
+                : 24 /* hours */ * 60 /* minutes */ * 60 /* seconds */ * 1000; /* milliseconds */
         this.generatePayload = configuration.generatePayload;
         this.cache = new Map<string, ICacheEntry>();
         this.cacheSize = 0;
@@ -63,24 +54,16 @@ export default class GraphQLClient implements IGraphQLClient {
 
     public GetActiveSubscriptions = () => this.activeSubscriptions;
 
-    public ExecuteQueryRaw = <TReturn, TVariables = undefined>(
-        request: IGraphQLRequest<TVariables>
-    ) => {
+    public ExecuteQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
         let body;
 
         // If the request should be sent as a form, create a FormData object and append the necessary fields
         if (this.asForm) {
             const formData = new FormData();
             formData.append("query", request.query);
-            if (request.variables)
-                formData.append("variables", JSON.stringify(request.variables));
-            if (request.operationName)
-                formData.append("operationName", request.operationName);
-            if (request.extensions)
-                formData.append(
-                    "extensions",
-                    JSON.stringify(request.extensions)
-                );
+            if (request.variables) formData.append("variables", JSON.stringify(request.variables));
+            if (request.operationName) formData.append("operationName", request.operationName);
+            if (request.extensions) formData.append("extensions", JSON.stringify(request.extensions));
             body = formData;
         } else {
             // Otherwise, send the request as a JSON string
@@ -88,19 +71,14 @@ export default class GraphQLClient implements IGraphQLClient {
         }
 
         // Create a cancel source using the AbortController API, if it is available
-        const cancelSource =
-            typeof AbortController === "undefined"
-                ? undefined
-                : new AbortController();
+        const cancelSource = typeof AbortController === "undefined" ? undefined : new AbortController();
 
         // Create a new IRequest object with the URL, method, body, headers, and cancel signal
         const config: IRequest = {
             url: this.url,
             method: "POST",
             body: body,
-            headers: this.asForm
-                ? undefined
-                : { "Content-Type": "application/json" },
+            headers: this.asForm ? undefined : { "Content-Type": "application/json" },
             signal: cancelSource ? cancelSource.signal : null,
         };
 
@@ -108,9 +86,7 @@ export default class GraphQLClient implements IGraphQLClient {
         this.pendingRequests += 1;
 
         // If a transformRequest function is defined, apply it to the request configuration
-        const configPromise = this.transformRequest
-            ? Promise.resolve(this.transformRequest(config))
-            : Promise.resolve(config);
+        const configPromise = this.transformRequest ? Promise.resolve(this.transformRequest(config)) : Promise.resolve(config);
 
         // Send the request using fetch, and return a promise that resolves to the response
         const ret = configPromise
@@ -130,9 +106,7 @@ export default class GraphQLClient implements IGraphQLClient {
                             this.pendingRequests -= 1;
 
                             // Check if the response status is valid (between 200 and 299 or between 400 and 499)
-                            const valid =
-                                (data.status >= 200 && data.status < 300) ||
-                                (data.status >= 400 && data.status < 500);
+                            const valid = (data.status >= 200 && data.status < 300) || (data.status >= 400 && data.status < 500);
 
                             // If the response status is not valid, create a new query result object with the error message
                             if (!valid) {
@@ -146,23 +120,16 @@ export default class GraphQLClient implements IGraphQLClient {
 
                             // Parse the JSON data and create a new query result object with the data and any errors
                             return data.json().then((jsonData) => {
-                                const queryRet =
-                                    jsonData as IQueryResult<TReturn>;
-                                if (queryRet.errors && queryRet.errors.length)
-                                    queryRet.data = undefined;
+                                const queryRet = jsonData as IQueryResult<TReturn>;
+                                if (queryRet.errors && queryRet.errors.length) queryRet.data = undefined;
                                 queryRet.networkError = false;
 
                                 // Calculate the size of the response and set it on the query result object
-                                const contentLengthHeader =
-                                    data.headers.get("Content-Length");
+                                const contentLengthHeader = data.headers.get("Content-Length");
                                 if (contentLengthHeader) {
-                                    queryRet.size = parseInt(
-                                        contentLengthHeader,
-                                        10
-                                    );
+                                    queryRet.size = parseInt(contentLengthHeader, 10);
                                 } else {
-                                    queryRet.size =
-                                        JSON.stringify(jsonData).length;
+                                    queryRet.size = JSON.stringify(jsonData).length;
                                 }
 
                                 return Promise.resolve(queryRet);
@@ -174,11 +141,7 @@ export default class GraphQLClient implements IGraphQLClient {
                                 networkError: true,
                                 errors: [
                                     {
-                                        message:
-                                            typeof error === "string"
-                                                ? error
-                                                : error.message ||
-                                                  "Unknown error from Fetch API",
+                                        message: typeof error === "string" ? error : error.message || "Unknown error from Fetch API",
                                     },
                                 ],
                                 extensions: {
@@ -196,10 +159,7 @@ export default class GraphQLClient implements IGraphQLClient {
                         networkError: true,
                         errors: [
                             {
-                                message:
-                                    typeof error === "string"
-                                        ? error
-                                        : "Error initializing request configuration",
+                                message: typeof error === "string" ? error : "Error initializing request configuration",
                             },
                         ],
                         extensions: {
@@ -227,8 +187,7 @@ export default class GraphQLClient implements IGraphQLClient {
         // Set cache mode based on input or default cache policy
         cacheMode = cacheMode || this.defaultCachePolicy;
         // Set cache timeout based on input or default cache time
-        const cacheTimeoutValue =
-            cacheTimeout !== undefined ? cacheTimeout : this.defaultCacheTime;
+        const cacheTimeoutValue = cacheTimeout !== undefined ? cacheTimeout : this.defaultCacheTime;
         // Stringify the request object
         const queryAndVariablesString = JSON.stringify(request);
 
@@ -242,13 +201,10 @@ export default class GraphQLClient implements IGraphQLClient {
                 // Refresh function for executing the query and updating the cache entry
                 refresh: () => {
                     // If already loading, return the promise representing the currently-executing request
-                    if (newEntry.response.loading)
-                        return newEntry.response.resultPromise;
+                    if (newEntry.response.loading) return newEntry.response.resultPromise;
                     // Otherwise, start executing the request
                     newEntry.response.loading = true;
-                    const exec = this.ExecuteQueryRaw<TReturn, TVariables>(
-                        request
-                    );
+                    const exec = this.ExecuteQueryRaw<TReturn, TVariables>(request);
                     newEntry.response.resultPromise = exec.result;
                     newEntry.cancelRequest = exec.abort;
                     // When the query result is resolved (note: data may contain a sucessful or failed response; the promise will not be rejected)
@@ -264,14 +220,9 @@ export default class GraphQLClient implements IGraphQLClient {
                                 newEntry.expires = 0;
                             } else {
                                 // Set the cache entry size
-                                this.SetCacheEntrySize(
-                                    newEntry,
-                                    data.size + 1000
-                                );
+                                this.SetCacheEntrySize(newEntry, data.size + 1000);
                                 // Set the cache entry expiration date
-                                if (cacheMode !== "no-cache")
-                                    newEntry.expires =
-                                        Date.now() + cacheTimeoutValue;
+                                if (cacheMode !== "no-cache") newEntry.expires = Date.now() + cacheTimeoutValue;
                             }
                             // Notify all subscribers of the new data
                             newEntry.subscribers.forEach((subscriber) => {
@@ -314,9 +265,7 @@ export default class GraphQLClient implements IGraphQLClient {
                 subscribe: (callback) => {
                     newEntry.subscribers.push(callback);
                     return () => {
-                        newEntry.subscribers = newEntry.subscribers.filter(
-                            (x) => x !== callback
-                        );
+                        newEntry.subscribers = newEntry.subscribers.filter((x) => x !== callback);
                     };
                 },
             };
@@ -324,18 +273,11 @@ export default class GraphQLClient implements IGraphQLClient {
             newEntry.response.refresh();
         };
         // Get or create a cache entry using the factory function
-        const newEntry = this.GetOrCreateCacheEntry(
-            queryAndVariablesString,
-            newEntryFactory,
-            cacheMode === "no-cache"
-        );
+        const newEntry = this.GetOrCreateCacheEntry(queryAndVariablesString, newEntryFactory, cacheMode === "no-cache");
         // If there are no subscribers and the cache mode is "cache-and-network" or the cache entry has expired, refresh the cache entry
         // (note: 'no-cache' would have already created a new request)
         // But for "cache-first" mode, or subscribers to a request whose entry has not expired, does not need a refresh
-        if (
-            newEntry.subscribers.length === 0 &&
-            (cacheMode === "cache-and-network" || newEntry.expires < Date.now())
-        ) {
+        if (newEntry.subscribers.length === 0 && (cacheMode === "cache-and-network" || newEntry.expires < Date.now())) {
             newEntry.response.refresh();
         }
         // Return the cache entry's response object as an IQueryResponse
@@ -372,10 +314,7 @@ export default class GraphQLClient implements IGraphQLClient {
                 networkError: true,
                 errors: [
                     {
-                        message:
-                            typeof error === "string"
-                                ? error
-                                : "Error generating websocket connection payload",
+                        message: typeof error === "string" ? error : "Error generating websocket connection payload",
                     },
                 ],
                 extensions: {
@@ -388,137 +327,110 @@ export default class GraphQLClient implements IGraphQLClient {
         };
 
         // set up connection promise
-        const connectionPromise = new Promise<void>(
-            (resolveConnection, rejectConnection) => {
-                let connectionResolved = false;
-                abortPromise.then(() => {
-                    if (!connectionResolved) {
-                        connectionResolved = true;
-                        rejectConnection();
-                    }
-                });
-                // attempt to generate the connection payload
-                const payloadPromise = this.generatePayload
-                    ? Promise.resolve(this.generatePayload())
-                    : Promise.resolve(undefined);
-                payloadPromise.then(
-                    (payload) => {
+        const connectionPromise = new Promise<void>((resolveConnection, rejectConnection) => {
+            let connectionResolved = false;
+            abortPromise.then(() => {
+                if (!connectionResolved) {
+                    connectionResolved = true;
+                    rejectConnection();
+                }
+            });
+            // attempt to generate the connection payload
+            const payloadPromise = this.generatePayload ? Promise.resolve(this.generatePayload()) : Promise.resolve(undefined);
+            payloadPromise.then(
+                (payload) => {
+                    if (aborted) return;
+                    // connect to the websocket endpoint
+                    const webSocket = new WebSocket(this.webSocketUrl, "graphql-transport-ws");
+                    // set up abort/close
+                    abortPromise.then(() => {
+                        webSocket.close();
+                    });
+                    // set up state machine
+                    let state: "opening" | "connected" = "opening";
+                    // when connection is opened, send connection init message
+                    webSocket.onopen = () => {
                         if (aborted) return;
-                        // connect to the websocket endpoint
-                        const webSocket = new WebSocket(
-                            this.webSocketUrl,
-                            "graphql-transport-ws"
-                        );
-                        // set up abort/close
-                        abortPromise.then(() => {
-                            webSocket.close();
-                        });
-                        // set up state machine
-                        let state: "opening" | "connected" = "opening";
-                        // when connection is opened, send connection init message
-                        webSocket.onopen = () => {
-                            if (aborted) return;
-                            const message = {
-                                type: "connection_init",
-                                payload: payload,
-                            };
-                            webSocket.send(JSON.stringify(message));
+                        const message = {
+                            type: "connection_init",
+                            payload: payload,
                         };
-                        // when message received, process it
-                        webSocket.onmessage = (ev) => {
-                            // parse the incoming message
-                            if (aborted) return;
-                            if (typeof ev.data !== "string")
-                                doError("WebSocket data is not string");
-                            let message: any;
-                            try {
-                                message = JSON.parse(ev.data);
-                            } catch {
-                                doError("WebSocket message is not valid JSON");
-                            }
-                            if (message === null)
-                                doError("WebSocket message is null");
+                        webSocket.send(JSON.stringify(message));
+                    };
+                    // when message received, process it
+                    webSocket.onmessage = (ev) => {
+                        // parse the incoming message
+                        if (aborted) return;
+                        if (typeof ev.data !== "string") doError("WebSocket data is not string");
+                        let message: any;
+                        try {
+                            message = JSON.parse(ev.data);
+                        } catch {
+                            doError("WebSocket message is not valid JSON");
+                        }
+                        if (message === null) doError("WebSocket message is null");
 
-                            // process message based on state machine
-                            if (message.type === "ping") {
-                                webSocket.send(
-                                    JSON.stringify({ type: "pong" })
-                                );
-                            } else if (state === "opening") {
-                                if (message.type !== "connection_ack")
-                                    doError(
-                                        "Invalid connection response from WebSocket server"
-                                    );
-                                else {
-                                    state = "connected";
-                                    if (!connectionResolved) {
-                                        connectionResolved = true;
-                                        resolveConnection();
-                                    }
-                                    webSocket.send(
-                                        JSON.stringify({
-                                            id: subscriptionId,
-                                            type: "subscribe",
-                                            payload: request,
-                                        })
-                                    );
+                        // process message based on state machine
+                        if (message.type === "ping") {
+                            webSocket.send(JSON.stringify({ type: "pong" }));
+                        } else if (state === "opening") {
+                            if (message.type !== "connection_ack") doError("Invalid connection response from WebSocket server");
+                            else {
+                                state = "connected";
+                                if (!connectionResolved) {
+                                    connectionResolved = true;
+                                    resolveConnection();
                                 }
-                            } else if (state === "connected") {
-                                if (message.type === "next") {
-                                    if (
-                                        !message.payload ||
-                                        (!message.payload.data &&
-                                            !message.payload.errors) ||
-                                        message.id !== subscriptionId
-                                    ) {
-                                        doError(
-                                            "Invalid payload for 'next' packet"
-                                        );
-                                    } else {
-                                        doData({
-                                            networkError: false,
-                                            size: (ev.data as string).length,
-                                            data: message.payload.data,
-                                            errors: message.payload.errors,
-                                            extensions:
-                                                message.payload.extensions,
-                                        });
-                                    }
-                                } else if (message.type === "error") {
-                                    if (
-                                        !message.payload ||
-                                        message.id !== subscriptionId
-                                    )
-                                        doError(
-                                            "Invalid payload for 'error' packet"
-                                        );
+                                webSocket.send(
+                                    JSON.stringify({
+                                        id: subscriptionId,
+                                        type: "subscribe",
+                                        payload: request,
+                                    })
+                                );
+                            }
+                        } else if (state === "connected") {
+                            if (message.type === "next") {
+                                if (
+                                    !message.payload ||
+                                    (!message.payload.data && !message.payload.errors) ||
+                                    message.id !== subscriptionId
+                                ) {
+                                    doError("Invalid payload for 'next' packet");
+                                } else {
                                     doData({
                                         networkError: false,
                                         size: (ev.data as string).length,
-                                        errors: message.payload,
+                                        data: message.payload.data,
+                                        errors: message.payload.errors,
+                                        extensions: message.payload.extensions,
                                     });
-                                    doAbort();
-                                } else if (message.type === "complete") {
-                                    if (message.id !== subscriptionId)
-                                        doError(
-                                            "Invalid payload for 'complete' packet"
-                                        );
-                                    doAbort();
                                 }
+                            } else if (message.type === "error") {
+                                if (!message.payload || message.id !== subscriptionId) doError("Invalid payload for 'error' packet");
+                                doData({
+                                    networkError: false,
+                                    size: (ev.data as string).length,
+                                    errors: message.payload,
+                                });
+                                doAbort();
+                            } else if (message.type === "complete") {
+                                if (message.id !== subscriptionId) doError("Invalid payload for 'complete' packet");
+                                doAbort();
                             }
-                        };
-                        // when websocket closed, notify caller (only raises error if not closed from this end)
-                        webSocket.onclose = () => {
-                            doError("WebSocket connection unexpectedly closed");
-                        };
-                    },
-                    // when failed to generate payload, notify caller
-                    (error) => {
-                        doError(error);
-                    }
-                );
-            }
-        );
+                        }
+                    };
+                    // when websocket closed, notify caller (only raises error if not closed from this end)
+                    webSocket.onclose = () => {
+                        doError("WebSocket connection unexpectedly closed");
+                    };
+                },
+                // when failed to generate payload, notify caller
+                (error) => {
+                    doError(error);
+                }
+            );
+        });
 
         return {
             connected: connectionPromise,
@@ -572,8 +484,7 @@ export default class GraphQLClient implements IGraphQLClient {
                 valueFromCache.lastUsed = Date.now();
                 return valueFromCache;
             } else {
-                if (this.cache.delete(queryAndVariablesString))
-                    this.cacheSize -= valueFromCache.size;
+                if (this.cache.delete(queryAndVariablesString)) this.cacheSize -= valueFromCache.size;
             }
         }
         const newEntry: ICacheEntry = {
@@ -631,8 +542,7 @@ export default class GraphQLClient implements IGraphQLClient {
             this.cache.forEach((value) => {
                 //(value, key)
                 if (value.subscribers.length === 0 && value !== exclude) {
-                    if (!oldestEntry || value.lastUsed < oldestEntry.lastUsed)
-                        oldestEntry = value;
+                    if (!oldestEntry || value.lastUsed < oldestEntry.lastUsed) oldestEntry = value;
                 }
             });
             if (oldestEntry) {

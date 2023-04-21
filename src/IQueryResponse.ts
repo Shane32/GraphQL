@@ -29,9 +29,7 @@ interface IQueryResponse<T> {
      * @param callback A callback function to be invoked when the query result changes.
      * @returns A function to release the subscription.
      */
-    subscribe: (
-        callback: (result: IQueryResult<T> | null) => void
-    ) => () => void;
+    subscribe: (callback: (result: IQueryResult<T> | null) => void) => () => void;
 
     /**
      * Refreshes the query and returns a promise for the new result.  If the query is currently loading, nothing happens.

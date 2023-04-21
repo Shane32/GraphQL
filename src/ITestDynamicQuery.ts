@@ -9,8 +9,6 @@ import ITestQueryResult from "./ITestQueryResult";
  * @param request The GraphQL request for the test query.
  * @returns The dynamic result for the test query, or null if the query is not supported.
  */
-type ITestDynamicQuery<TResult, TVariables = undefined> = (
-    request: IGraphQLRequest<TVariables>
-) => ITestQueryResult<TResult> | null;
+type ITestDynamicQuery<TResult, TVariables = undefined> = (request: IGraphQLRequest<TVariables>) => ITestQueryResult<TResult> | null;
 
 export default ITestDynamicQuery;

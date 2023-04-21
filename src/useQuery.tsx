@@ -66,17 +66,14 @@ interface IOptions<TVariables> {
  * @param {IOptions<TResult, TVariables>} [options] The options for the query.
  * @returns {IUseQueryRet<TResult, TVariables>} The result of the query.
  */
-const useQuery: <TResult, TVariables = unknown>(
-    query: string,
-    options?: IOptions<TVariables>
-) => IUseQueryRet<TResult> = <TResult, TVariables = unknown>(
+const useQuery: <TResult, TVariables = unknown>(query: string, options?: IOptions<TVariables>) => IUseQueryRet<TResult> = <
+    TResult,
+    TVariables = unknown
+>(
     query: string,
     options?: IOptions<TVariables>
 ) => {
-    const client = useGraphQLClient(
-        options && options.client,
-        options && options.guest
-    );
+    const client = useGraphQLClient(options && options.client, options && options.guest);
     const currentVariables = options?.variables;
     const lastQueryResponseRef = React.useRef<IQueryResult<TResult>>();
     const queryRet = React.useMemo<IQueryResponse<TResult> | null>(() => {
@@ -89,10 +86,7 @@ const useQuery: <TResult, TVariables = unknown>(
             operationName: options?.operationName,
             extensions: options?.extensions,
         };
-        return client.ExecuteQuery<TResult, TVariables>(
-            request as any,
-            options?.fetchPolicy
-        );
+        return client.ExecuteQuery<TResult, TVariables>(request as any, options?.fetchPolicy);
     }, [
         client,
         options?.skip,
@@ -119,16 +113,14 @@ const useQuery: <TResult, TVariables = unknown>(
     if (!queryRet) {
         return {
             loading: false,
-            refetch: () =>
-                Promise.reject(new Error("Cannot refetch a skipped query")),
+            refetch: () => Promise.reject(new Error("Cannot refetch a skipped query")),
         };
     }
 
     // prep refresh function to throw a GraphQLError if there were any query errors
     const refresh = () => {
         return queryRet.refresh().then((data) => {
-            if (data.data && !(data.errors && data.errors.length))
-                return Promise.resolve(data);
+            if (data.data && !(data.errors && data.errors.length)) return Promise.resolve(data);
             return Promise.reject(new GraphQLError(data));
         });
     };

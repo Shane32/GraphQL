@@ -34,11 +34,7 @@ afterEach(() => {
 
 const StrictMode = (React as any).StrictMode ?? React.Fragment;
 
-const useQueryTest = async (
-    useStrictMode: boolean,
-    count: number,
-    fetchPolicy: "no-cache" | "cache-first" | "cache-and-network"
-) => {
+const useQueryTest = async (useStrictMode: boolean, count: number, fetchPolicy: "no-cache" | "cache-first" | "cache-and-network") => {
     act(() => {
         const client = new GraphQLClient({
             url: "https://api.zbox.com/api/graphql",
@@ -60,14 +56,10 @@ const useQueryTest = async (
             );
         }
     });
-    await waitFor(() =>
-        expect(screen.getByText("Loading")).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByText("Loading")).toBeInTheDocument());
     await waitFor(() => expect(requests.length).toEqual(count));
     for (let i = 0; i < count; i++) {
-        expect(requests[i].request.url).toEqual(
-            "https://api.zbox.com/api/graphql"
-        );
+        expect(requests[i].request.url).toEqual("https://api.zbox.com/api/graphql");
         expect(requests[i].request.method).toEqual("POST");
         const formData = await requests[i].request.formData();
         expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
@@ -89,27 +81,16 @@ const useQueryTest = async (
             )
         );
     }
-    await waitFor(() =>
-        expect(screen.getByText("Version: 12345")).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByText("Version: 12345")).toBeInTheDocument());
 
     function TestUseQuery() {
-        const result = useQuery<{ v1: { info: { version: string } } }>(
-            "{ v1 { info { version } } }",
-            { fetchPolicy: fetchPolicy }
-        );
-        return result.data ? (
-            <p>Version: {result.data.v1.info.version}</p>
-        ) : (
-            <p>Loading</p>
-        );
+        const result = useQuery<{ v1: { info: { version: string } } }>("{ v1 { info { version } } }", { fetchPolicy: fetchPolicy });
+        return result.data ? <p>Version: {result.data.v1.info.version}</p> : <p>Loading</p>;
     }
 };
 
 it("useQuery works", () => useQueryTest(false, 1, "no-cache"));
 
 it("useQuery works with strict mode", () => useQueryTest(true, 2, "no-cache"));
-it("useQuery works with strict mode, cache-first", () =>
-    useQueryTest(true, 1, "cache-first"));
-it("useQuery works with strict mode, cache-and-network", () =>
-    useQueryTest(true, 1, "cache-and-network"));
+it("useQuery works with strict mode, cache-first", () => useQueryTest(true, 1, "cache-first"));
+it("useQuery works with strict mode, cache-and-network", () => useQueryTest(true, 1, "cache-and-network"));

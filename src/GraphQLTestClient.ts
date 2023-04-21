@@ -8,10 +8,7 @@ import ITestQuery from "./ITestQuery";
 import ITestQueryResult from "./ITestQueryResult";
 
 function isFunction(functionToCheck: any) {
-    return (
-        functionToCheck &&
-        {}.toString.call(functionToCheck) === "[object Function]"
-    );
+    return functionToCheck && {}.toString.call(functionToCheck) === "[object Function]";
 }
 
 /**
@@ -20,15 +17,11 @@ function isFunction(functionToCheck: any) {
  * @implements {IGraphQLClient}
  * @implements {IGraphQLTestConfig}
  */
-export default class GraphQLTestClient
-    implements IGraphQLClient, IGraphQLTestConfig
-{
+export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestConfig {
     private TestQueriesArray: Array<ITestDynamicQuery<any, any>> = [];
 
     public AddTestQuery = <TResult, TVariables = undefined>(
-        arg:
-            | ITestQuery<TResult, TVariables>
-            | ITestDynamicQuery<TResult, TVariables>
+        arg: ITestQuery<TResult, TVariables> | ITestDynamicQuery<TResult, TVariables>
     ) => {
         if (isFunction(arg)) {
             const arg2 = arg as ITestDynamicQuery<TResult, TVariables>;
@@ -38,12 +31,9 @@ export default class GraphQLTestClient
             this.TestQueriesArray.push((input) => {
                 if (
                     arg2.query === input.query &&
-                    (arg2.operationName || null) ===
-                        (input.operationName || null) &&
-                    JSON.stringify(arg2.variables || null) ==
-                        JSON.stringify(input.variables || null) &&
-                    JSON.stringify(arg2.extensions || null) ==
-                        JSON.stringify(input.extensions || null)
+                    (arg2.operationName || null) === (input.operationName || null) &&
+                    JSON.stringify(arg2.variables || null) == JSON.stringify(input.variables || null) &&
+                    JSON.stringify(arg2.extensions || null) == JSON.stringify(input.extensions || null)
                 )
                     return arg2.result;
                 return null;
@@ -55,16 +45,11 @@ export default class GraphQLTestClient
 
     public GetActiveSubscriptions = () => 0;
 
-    public ExecuteQueryRaw = <TReturn, TVariables = undefined>(
-        request: IGraphQLRequest<TVariables>
-    ) => {
+    public ExecuteQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
         const result = this.ExecuteTestQuery<TReturn, TVariables>(request);
         if (!result) {
             throw new Error(
-                'No test configured for the requested query - "' +
-                    request.query +
-                    '" - ' +
-                    JSON.stringify(request.variables || null)
+                'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null)
             );
         }
         return {
@@ -102,10 +87,7 @@ export default class GraphQLTestClient
         var queryResult = this.ExecuteTestQuery<TReturn, TVariables>(request);
         if (!queryResult) {
             throw new Error(
-                'No test configured for the requested query - "' +
-                    request.query +
-                    '" - ' +
-                    JSON.stringify(request.variables || null)
+                'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null)
             );
         }
         var result = this.CreateQueryResult(queryResult);
@@ -122,9 +104,9 @@ export default class GraphQLTestClient
         return ret;
     };
 
-    public ExecuteTestQuery: <TReturn, TVariables>(
-        request: IGraphQLRequest<TVariables>
-    ) => ITestQueryResult<TReturn> | null = (request: IGraphQLRequest<any>) => {
+    public ExecuteTestQuery: <TReturn, TVariables>(request: IGraphQLRequest<TVariables>) => ITestQueryResult<TReturn> | null = (
+        request: IGraphQLRequest<any>
+    ) => {
         for (let i = this.TestQueriesArray.length - 1; i >= 0; i--) {
             var ret = this.TestQueriesArray[i](request);
             if (ret) return ret;
