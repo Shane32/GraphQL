@@ -3,7 +3,7 @@ import ITestQueryResult from "./ITestQueryResult";
 
 /**
  * Represents a test query with a dynamic result.
- * 
+ *
  * @template TResult The type of the query result.
  * @template TVariables The type of the query variables, if any.
  * @param request The GraphQL request for the test query.

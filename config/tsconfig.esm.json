@@ -4,5 +4,6 @@
     "module": "ESNext" /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'ESNext'. */,
     "outDir": "../dist/esm" /* Redirect output structure to the directory. */
   },
-  "include": [ "../src/**/*" ]
+  "include": [ "../src/**/*" ],
+  "exclude": [ "../**/*.test.js", "../**/*.test.ts", "../**/*.test.jsx", "../**/*.test.tsx" ]
 }
