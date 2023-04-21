@@ -2,186 +2,186 @@ import { waitFor } from "@testing-library/react";
 import GraphQLClient from "../src/GraphQLClient";
 
 interface IMockFetch {
-    request: Request;
-    resolve: (value: Response | Promise<Response>) => void;
-    reject: (reason?: any) => void;
+  request: Request;
+  resolve: (value: Response | Promise<Response>) => void;
+  reject: (reason?: any) => void;
 }
 let requests: IMockFetch[] = [];
 
 beforeEach(() => {
-    jest.spyOn(global, "fetch").mockImplementation((request, init) => {
-        return new Promise((resolve, reject) => {
-            requests.push({
-                request: new Request(request, init),
-                resolve: resolve,
-                reject: reject,
-            });
-        });
+  jest.spyOn(global, "fetch").mockImplementation((request, init) => {
+    return new Promise((resolve, reject) => {
+      requests.push({
+        request: new Request(request, init),
+        resolve: resolve,
+        reject: reject,
+      });
     });
+  });
 });
 
 afterEach(() => {
-    requests = [];
+  requests = [];
 });
 
 test("executeQueryRaw with json", async () => {
-    const client = new GraphQLClient({
-        url: "https://api.zbox.com/api/graphql",
-    });
-    const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
-        query: "{ v1 { info { version } } }",
-    });
+  const client = new GraphQLClient({
+    url: "https://api.zbox.com/api/graphql",
+  });
+  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+    query: "{ v1 { info { version } } }",
+  });
 
-    // simulate API call
-    await waitFor(() => expect(requests.length).toEqual(1));
-    expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
-    expect(requests[0].request.method).toEqual("POST");
-    const formData = await requests[0].request.json();
-    expect(JSON.stringify(formData)).toEqual('{"query":"{ v1 { info { version } } }"}');
-    requests[0].resolve(
-        new Response(
-            JSON.stringify({
-                data: {
-                    v1: {
-                        info: {
-                            version: "12345",
-                        },
-                    },
-                },
-            }),
-            {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-            }
-        )
-    );
+  // simulate API call
+  await waitFor(() => expect(requests.length).toEqual(1));
+  expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+  expect(requests[0].request.method).toEqual("POST");
+  const formData = await requests[0].request.json();
+  expect(JSON.stringify(formData)).toEqual('{"query":"{ v1 { info { version } } }"}');
+  requests[0].resolve(
+    new Response(
+      JSON.stringify({
+        data: {
+          v1: {
+            info: {
+              version: "12345",
+            },
+          },
+        },
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    )
+  );
 
-    // verify result
-    const result = await ret.result;
-    expect(result.data).toBeTruthy();
-    expect(result.data!.v1.info.version).toEqual("12345");
+  // verify result
+  const result = await ret.result;
+  expect(result.data).toBeTruthy();
+  expect(result.data!.v1.info.version).toEqual("12345");
 });
 
 test("executeQueryRaw with json and alt response type", async () => {
-    const client = new GraphQLClient({
-        url: "https://api.zbox.com/api/graphql",
-    });
-    const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
-        query: "{ v1 { info { version } } }",
-    });
+  const client = new GraphQLClient({
+    url: "https://api.zbox.com/api/graphql",
+  });
+  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+    query: "{ v1 { info { version } } }",
+  });
 
-    // simulate API call
-    await waitFor(() => expect(requests.length).toEqual(1));
-    expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
-    expect(requests[0].request.method).toEqual("POST");
-    const formData = await requests[0].request.json();
-    expect(JSON.stringify(formData)).toEqual('{"query":"{ v1 { info { version } } }"}');
-    requests[0].resolve(
-        new Response(
-            JSON.stringify({
-                data: {
-                    v1: {
-                        info: {
-                            version: "12345",
-                        },
-                    },
-                },
-            }),
-            {
-                status: 200,
-                headers: {
-                    "Content-Type": "application/graphql-response+json",
-                },
-            }
-        )
-    );
+  // simulate API call
+  await waitFor(() => expect(requests.length).toEqual(1));
+  expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+  expect(requests[0].request.method).toEqual("POST");
+  const formData = await requests[0].request.json();
+  expect(JSON.stringify(formData)).toEqual('{"query":"{ v1 { info { version } } }"}');
+  requests[0].resolve(
+    new Response(
+      JSON.stringify({
+        data: {
+          v1: {
+            info: {
+              version: "12345",
+            },
+          },
+        },
+      }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/graphql-response+json",
+        },
+      }
+    )
+  );
 
-    // verify result
-    const result = await ret.result;
-    expect(result.data).toBeTruthy();
-    expect(result.data!.v1.info.version).toEqual("12345");
+  // verify result
+  const result = await ret.result;
+  expect(result.data).toBeTruthy();
+  expect(result.data!.v1.info.version).toEqual("12345");
 });
 
 test("executeQueryRaw with form", async () => {
-    const client = new GraphQLClient({
-        url: "https://api.zbox.com/api/graphql",
-        asForm: true,
-    });
-    const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
-        query: "{ v1 { info { version } } }",
-    });
+  const client = new GraphQLClient({
+    url: "https://api.zbox.com/api/graphql",
+    asForm: true,
+  });
+  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+    query: "{ v1 { info { version } } }",
+  });
 
-    // simulate API call
-    await waitFor(() => expect(requests.length).toEqual(1));
-    expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
-    expect(requests[0].request.method).toEqual("POST");
-    const formData = await requests[0].request.formData();
-    expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
-    requests[0].resolve(
-        new Response(
-            JSON.stringify({
-                data: {
-                    v1: {
-                        info: {
-                            version: "12345",
-                        },
-                    },
-                },
-            }),
-            {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-            }
-        )
-    );
+  // simulate API call
+  await waitFor(() => expect(requests.length).toEqual(1));
+  expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+  expect(requests[0].request.method).toEqual("POST");
+  const formData = await requests[0].request.formData();
+  expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
+  requests[0].resolve(
+    new Response(
+      JSON.stringify({
+        data: {
+          v1: {
+            info: {
+              version: "12345",
+            },
+          },
+        },
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    )
+  );
 
-    // verify result
-    const result = await ret.result;
-    expect(result.data).toBeTruthy();
-    expect(result.data!.v1.info.version).toEqual("12345");
+  // verify result
+  const result = await ret.result;
+  expect(result.data).toBeTruthy();
+  expect(result.data!.v1.info.version).toEqual("12345");
 });
 
 test("executeQuery", async () => {
-    const client = new GraphQLClient({
-        url: "https://api.zbox.com/api/graphql",
-        asForm: true,
-    });
-    const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache");
+  const client = new GraphQLClient({
+    url: "https://api.zbox.com/api/graphql",
+    asForm: true,
+  });
+  const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache");
 
-    expect(ret.result).toBeNull();
-    expect(ret.loading).toBe(true);
+  expect(ret.result).toBeNull();
+  expect(ret.loading).toBe(true);
 
-    // simulate API call
-    await waitFor(() => expect(requests.length).toEqual(1));
-    expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
-    expect(requests[0].request.method).toEqual("POST");
-    const formData = await requests[0].request.formData();
-    expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
-    requests[0].resolve(
-        new Response(
-            JSON.stringify({
-                data: {
-                    v1: {
-                        info: {
-                            version: "12345",
-                        },
-                    },
-                },
-            }),
-            {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-            }
-        )
-    );
+  // simulate API call
+  await waitFor(() => expect(requests.length).toEqual(1));
+  expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+  expect(requests[0].request.method).toEqual("POST");
+  const formData = await requests[0].request.formData();
+  expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
+  requests[0].resolve(
+    new Response(
+      JSON.stringify({
+        data: {
+          v1: {
+            info: {
+              version: "12345",
+            },
+          },
+        },
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    )
+  );
 
-    // verify result
-    const result = await ret.resultPromise;
-    expect(ret.loading).toBe(false);
-    expect(ret.result).toBeTruthy();
-    expect(ret.result).toBe(result);
-    expect(result.data).toBeTruthy();
-    expect(result.data!.v1.info.version).toEqual("12345");
+  // verify result
+  const result = await ret.resultPromise;
+  expect(ret.loading).toBe(false);
+  expect(ret.result).toBeTruthy();
+  expect(ret.result).toBe(result);
+  expect(result.data).toBeTruthy();
+  expect(result.data!.v1.info.version).toEqual("12345");
 });
 
 /* This test works locally, but may not reliable in CI due to slow startup of the GraphQL API

@@ -1,5 +1,5 @@
 interface IRequest extends RequestInit {
-    url: string;
+  url: string;
 }
 
 export default IRequest;
