@@ -2,7 +2,6 @@ import * as React from "react";
 import GraphQLError from "./GraphQLError";
 import IGraphQLClient from "./IGraphQLClient";
 import IGraphQLError from "./IGraphQLError";
-import IGraphQLRequest from "./IGraphQLRequest";
 import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
 import useGraphQLClient from "./useGraphQLClient";
