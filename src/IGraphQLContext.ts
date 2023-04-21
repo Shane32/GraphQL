@@ -16,7 +16,7 @@ interface IGraphQLContext {
 
     /**
      * Additional named GraphQL clients for the context.
-     * 
+     *
      * @key The name of the client.
      * @value The GraphQL client.
      */

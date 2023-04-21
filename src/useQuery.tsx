@@ -1,61 +1,61 @@
-import * as React from 'react';
-import GraphQLError from './GraphQLError';
-import IGraphQLClient from './IGraphQLClient';
-import IGraphQLError from './IGraphQLError';
-import IGraphQLRequest from './IGraphQLRequest';
-import IQueryResponse from './IQueryResponse';
-import IQueryResult from './IQueryResult';
-import useGraphQLClient from './useGraphQLClient';
+import * as React from "react";
+import GraphQLError from "./GraphQLError";
+import IGraphQLClient from "./IGraphQLClient";
+import IGraphQLError from "./IGraphQLError";
+import IGraphQLRequest from "./IGraphQLRequest";
+import IQueryResponse from "./IQueryResponse";
+import IQueryResult from "./IQueryResult";
+import useGraphQLClient from "./useGraphQLClient";
 
 /**
  * Represents the return type of the `useQuery` hook.
- * 
+ *
  * @template TResult The expected result type of the query.
  */
 interface IUseQueryRet<TResult> {
     /** The data returned by the query, or null if no data is available. */
-    data?: TResult | null,
+    data?: TResult | null;
     /** An array of GraphQL errors returned by the query, if any. */
-    errors?: Array<IGraphQLError>,
+    errors?: Array<IGraphQLError>;
     /** A `GraphQLError` object representing any exception triggered by the query. */
-    error?: GraphQLError,
+    error?: GraphQLError;
     /** Additional information returned by the query. */
-    extensions?: any,
+    extensions?: any;
     /** Whether a network error occurred while executing the query. */
-    networkError?: boolean,
+    networkError?: boolean;
     /** Whether the query is currently loading. */
-    loading: boolean,
+    loading: boolean;
     /**
      * Refetches the query unless it is already loading.
-     * 
+     *
      * @returns {Promise<IQueryResult<TResult>>} A promise that resolves to the result of the refetched query.
      */
-    refetch: () => Promise<IQueryResult<TResult>>,
-};
+    refetch: () => Promise<IQueryResult<TResult>>;
+}
 
 /**
  * Represents the options for the `useQuery` hook.
- * 
+ *
  * @template TResult The expected result type of the query.
  * @template TVariables The expected variables type of the query.
  */
 interface IOptions<TVariables> {
     /** Whether to use the guest client. */
-    guest?: boolean,
+    guest?: boolean;
     /** The client to use for the query, or the name of the client. */
-    client?: IGraphQLClient | string,
+    client?: IGraphQLClient | string;
     /** The fetch policy to use for the query. */
-    fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network",
+    fetchPolicy?: "cache-first" | "no-cache" | "cache-and-network";
     /** Whether to skip execution of the query. */
-    skip?: boolean,
+    skip?: boolean;
     /** Whether to automatically refetch the query when the query or variables change. */
-    autoRefetch?: boolean,
+    autoRefetch?: boolean;
     /** The variables to use for the query. */
-    variables?: TVariables,
+    variables?: TVariables;
     /** The name of the operation to use for the query. */
-    operationName?: string,
+    operationName?: string;
     /** Additional extensions to add to the query. */
-    extensions?: {} | null,
+    extensions?: {} | null;
 }
 
 /**
@@ -67,33 +67,42 @@ interface IOptions<TVariables> {
  * @param {IOptions<TResult, TVariables>} [options] The options for the query.
  * @returns {IUseQueryRet<TResult, TVariables>} The result of the query.
  */
-const useQuery: <TResult, TVariables = unknown>(query: string, options?: IOptions<TVariables>) => IUseQueryRet<TResult> = <TResult, TVariables = unknown>(query: string, options?: IOptions<TVariables>) => {
-    const client = useGraphQLClient(options && options.client, options && options.guest);
+const useQuery: <TResult, TVariables = unknown>(
+    query: string,
+    options?: IOptions<TVariables>
+) => IUseQueryRet<TResult> = <TResult, TVariables = unknown>(
+    query: string,
+    options?: IOptions<TVariables>
+) => {
+    const client = useGraphQLClient(
+        options && options.client,
+        options && options.guest
+    );
     const currentVariables = options?.variables;
     const lastQueryResponseRef = React.useRef<IQueryResult<TResult>>();
-    const queryRet = React.useMemo<IQueryResponse<TResult> | null>(
-        () => {
-            // any time the options change, reset any cached returned value
-            lastQueryResponseRef.current = undefined;
-            if (options?.skip)
-                return null;
-            const request: IGraphQLRequest<TVariables> = {
-                query,
-                variables: currentVariables as any,
-                operationName: options?.operationName,
-                extensions: options?.extensions,
-            };
-            return client.ExecuteQuery<TResult, TVariables>(request, options?.fetchPolicy);
-        },
-        [
-            client,
-            options?.skip,
+    const queryRet = React.useMemo<IQueryResponse<TResult> | null>(() => {
+        // any time the options change, reset any cached returned value
+        lastQueryResponseRef.current = undefined;
+        if (options?.skip) return null;
+        const request: IGraphQLRequest<TVariables> = {
             query,
-            JSON.stringify(currentVariables || null),
-            options?.operationName,
-            JSON.stringify(options?.extensions || null),
-            options?.fetchPolicy,
-        ]);
+            variables: currentVariables as any,
+            operationName: options?.operationName,
+            extensions: options?.extensions,
+        };
+        return client.ExecuteQuery<TResult, TVariables>(
+            request,
+            options?.fetchPolicy
+        );
+    }, [
+        client,
+        options?.skip,
+        query,
+        JSON.stringify(currentVariables || null),
+        options?.operationName,
+        JSON.stringify(options?.extensions || null),
+        options?.fetchPolicy,
+    ]);
     const [data, setData] = React.useState(queryRet?.result || null);
 
     React.useEffect(() => {
@@ -111,18 +120,18 @@ const useQuery: <TResult, TVariables = unknown>(query: string, options?: IOption
     if (!queryRet) {
         return {
             loading: false,
-            refetch: () => Promise.reject(new Error("Cannot refetch a skipped query")),
+            refetch: () =>
+                Promise.reject(new Error("Cannot refetch a skipped query")),
         };
     }
 
     // prep refresh function to throw a GraphQLError if there were any query errors
     const refresh = () => {
-        return queryRet.refresh().then(
-            (data) => {
-                if (data.data && !(data.errors && data.errors.length))
-                    return Promise.resolve(data);
-                return Promise.reject(new GraphQLError(data));
-            })
+        return queryRet.refresh().then((data) => {
+            if (data.data && !(data.errors && data.errors.length))
+                return Promise.resolve(data);
+            return Promise.reject(new GraphQLError(data));
+        });
     };
 
     // return the query data, unless there was errors and it's reloading

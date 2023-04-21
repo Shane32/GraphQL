@@ -8,14 +8,14 @@ import IQueryResult from "./IQueryResult";
 interface IGraphQLClient {
     /**
      * Returns the number of pending requests.
-     * 
+     *
      * @returns The number of pending requests.
      */
     GetPendingRequests: () => number;
 
     /**
      * Returns the number of active subscriptions.
-     * 
+     *
      * @returns The number of active subscriptions.
      */
     GetActiveSubscriptions: () => number;
@@ -28,7 +28,9 @@ interface IGraphQLClient {
      * @param request The GraphQL request to execute.
      * @returns An object containing a promise for the query result and a function to abort the request.
      */
-    ExecuteQueryRaw: <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => { result: Promise<IQueryResult<TReturn>>, abort: () => void };
+    ExecuteQueryRaw: <TReturn, TVariables = undefined>(
+        request: IGraphQLRequest<TVariables>
+    ) => { result: Promise<IQueryResult<TReturn>>; abort: () => void };
 
     /**
      * Executes a GraphQL query or mutation and returns an object that can be used to retrieve the response, monitor updates or abort it.
@@ -42,21 +44,29 @@ interface IGraphQLClient {
      * @param cacheTimeout The cache timeout to use for the query in milliseconds; uses the client's default cache timeout when unspecified.
      * @returns An object that can be used to retrieve the query response, monitor updates to it, or abort it.
      */
-    ExecuteQuery: <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, cacheMode?: "no-cache" | "cache-first" | "cache-and-network", cacheTimeout?: number) => IQueryResponse<TReturn>;
+    ExecuteQuery: <TReturn, TVariables = undefined>(
+        request: IGraphQLRequest<TVariables>,
+        cacheMode?: "no-cache" | "cache-first" | "cache-and-network",
+        cacheTimeout?: number
+    ) => IQueryResponse<TReturn>;
 
     /**
      * Executes a GraphQL subscription and returns a promise that resolves when the subscription is connected and a function to abort the subscription.
-     * 
+     *
      * @param request The GraphQL request to execute.
      * @param onData The callback function to invoke when new data is received.
      * @param onClose The callback function to invoke when the subscription is closed.
      * @returns An object containing a promise that resolves when the subscription is connected and a function to abort the subscription.
      */
-    ExecuteSubscription: <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>, onData: (data: IQueryResult<TReturn>) => void, onClose: () => void) => { connected: Promise<void>, abort: () => void };
+    ExecuteSubscription: <TReturn, TVariables = undefined>(
+        request: IGraphQLRequest<TVariables>,
+        onData: (data: IQueryResult<TReturn>) => void,
+        onClose: () => void
+    ) => { connected: Promise<void>; abort: () => void };
 
     /**
      * Refreshes all cached queries in use and removes all other cache entries.  If force is true, aborts any loading queries and retries them.
-     * 
+     *
      * @param force If true, aborts any loading queries and retries them.
      */
     RefreshAll: (force?: boolean) => void;

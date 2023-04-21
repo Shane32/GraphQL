@@ -5,5 +5,6 @@
     "emitDeclarationOnly": true,
     "outDir": "../dist/types" /* Redirect output structure to the directory. */
   },
-  "include": [ "../src/**/*" ]
+  "include": [ "../src/**/*" ],
+  "exclude": [ "../**/*.test.js", "../**/*.test.ts", "../**/*.test.jsx", "../**/*.test.tsx" ]
 }

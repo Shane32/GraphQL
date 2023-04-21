@@ -35,10 +35,13 @@ jobs:
         with:
           node-version: '18.x'
           registry-url: 'https://npm.pkg.github.com'
-      - env:
+      - name: Configure package name, url, and version
+        env:
           github_repo: ${{ github.repository }}
           ref: 0.0.${{ github.run_number }}-beta
         run: node tools/updateurl $github_repo $ref
+      - name: Clean package.json
+        run: node tools/prepare-publish
       - name: Publish to GitHub Packages
         run: npm publish
         env:

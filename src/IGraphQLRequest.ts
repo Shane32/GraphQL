@@ -1,6 +1,6 @@
 /**
  * Represents a GraphQL request with variables.
- * 
+ *
  * @template TVariables The type of the variables.
  */
 interface IGraphQLRequestWithArguments<TVariables> {
@@ -52,9 +52,11 @@ interface IGraphQLRequestNoArguments {
 
 /**
  * Represents a GraphQL request, which can have either variables or no variables.
- * 
+ *
  * @template TVariables The type of the variables, if any.
  */
-type IGraphQLRequest<TVariables = undefined> = TVariables extends undefined ? IGraphQLRequestNoArguments : IGraphQLRequestWithArguments<TVariables>;
+type IGraphQLRequest<TVariables = undefined> = TVariables extends undefined
+    ? IGraphQLRequestNoArguments
+    : IGraphQLRequestWithArguments<TVariables>;
 
 export default IGraphQLRequest;
