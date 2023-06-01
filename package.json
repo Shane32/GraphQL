@@ -48,7 +48,7 @@
     "@testing-library/react": "^14.0.0",
     "@types/jest": "^27.5.2",
     "@types/pretty": "^2.0.1",
-    "@types/react": "^18.2.0",
+    "@types/react": "^18.2.7",
     "@types/react-dom": "^18.2.1",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
