@@ -1,6 +1,6 @@
 import GraphQLClient from "./GraphQLClient";
 import GraphQLError from "./GraphQLError";
-import IQueryResult from "./IQueryResult";
+import IQuerySuccessfulResult from "./IQuerySuccessfulResult";
 import useGraphQLClient from "./useGraphQLClient";
 
 /**
@@ -18,7 +18,7 @@ type IUseMutation = <TResult, TVariables>(
     /** Additional extensions to add to the mutation. */
     extensions?: {} | null;
   },
-) => [(options?: { variables?: TVariables }) => Promise<IQueryResult<TResult> & { data: TResult }>];
+) => [(options?: { variables?: TVariables }) => Promise<IQuerySuccessfulResult<TResult>>];
 
 /**
  * Returns a function that executes a GraphQL mutation.
@@ -60,7 +60,8 @@ const useMutation: IUseMutation = <TResult, TVariables>(
         extensions: options && options.extensions,
       })
       .result.then((data) => {
-        if (data.data && !(data.errors && data.errors.length)) return Promise.resolve(data as IQueryResult<TResult> & { data: TResult });
+        if (data.data && !(data.errors && data.errors.length) && !data.networkError)
+          return Promise.resolve(data as IQuerySuccessfulResult<TResult>);
         return Promise.reject(new GraphQLError(data));
       });
   };
