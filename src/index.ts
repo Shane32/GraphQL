@@ -16,6 +16,7 @@ import ITestDynamicQuery from "./ITestDynamicQuery";
 
 import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
+import IQuerySuccessfulResult from "./IQuerySuccessfulResult";
 import IGraphQLError from "./IGraphQLError";
 import IGraphQLClient from "./IGraphQLClient";
 
@@ -25,6 +26,7 @@ export {
   IRequest,
   IQueryResponse,
   IQueryResult,
+  IQuerySuccessfulResult,
   IGraphQLError,
   IGraphQLClient,
   IGraphQLContext,
