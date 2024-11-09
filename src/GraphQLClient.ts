@@ -172,7 +172,7 @@ export default class GraphQLClient implements IGraphQLClient {
       );
 
     // Return an object with the result promise and an abort function that cancels the request
-    const doAbort: () => void = cancelSource?.abort || (() => {});
+    const doAbort: () => void = cancelSource ? () => cancelSource.abort() : () => {};
     return {
       result: ret,
       abort: doAbort,
