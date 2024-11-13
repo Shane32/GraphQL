@@ -4,6 +4,7 @@ import IGraphQLClient from "./IGraphQLClient";
 import IGraphQLError from "./IGraphQLError";
 import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
+import TypedDocumentString from "./TypedDocumentString";
 import useGraphQLClient from "./useGraphQLClient";
 
 /**
@@ -66,13 +67,14 @@ interface IOptions<TVariables> {
  * @param {IOptions<TResult, TVariables>} [options] The options for the query.
  * @returns {IUseQueryRet<TResult, TVariables>} The result of the query.
  */
-const useQuery: <TResult, TVariables = unknown>(query: string, options?: IOptions<TVariables>) => IUseQueryRet<TResult> = <
-  TResult,
-  TVariables = unknown
->(
-  query: string,
+const useQuery: <TResult, TVariables = unknown>(
+  query: string | TypedDocumentString<TResult, TVariables>,
+  options?: IOptions<TVariables>
+) => IUseQueryRet<TResult> = <TResult, TVariables = unknown>(
+  query: string | TypedDocumentString<TResult, TVariables>,
   options?: IOptions<TVariables>
 ) => {
+  query = query.toString();
   const client = useGraphQLClient(options && options.client, options && options.guest);
   const currentVariables = options?.variables;
   const lastQueryResponseRef = React.useRef<IQueryResult<TResult>>();
