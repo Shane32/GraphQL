@@ -1,13 +1,14 @@
 import GraphQLClient from "./GraphQLClient";
 import GraphQLError from "./GraphQLError";
 import IQuerySuccessfulResult from "./IQuerySuccessfulResult";
+import TypedDocumentString from "./TypedDocumentString";
 import useGraphQLClient from "./useGraphQLClient";
 
 /**
  * Represents the `useMutation` hook.
  */
 type IUseMutation = <TResult, TVariables>(
-  query: string,
+  query: string | TypedDocumentString<TResult, TVariables>,
   options?: {
     /** The client to use for the mutation, or the name of the client. */
     client?: GraphQLClient | string;
@@ -17,7 +18,7 @@ type IUseMutation = <TResult, TVariables>(
     operationName?: string;
     /** Additional extensions to add to the mutation. */
     extensions?: {} | null;
-  },
+  }
 ) => [(options?: { variables?: TVariables }) => Promise<IQuerySuccessfulResult<TResult>>];
 
 /**
@@ -34,14 +35,14 @@ type IUseMutation = <TResult, TVariables>(
  * @returns {Array<Function>} A function that executes the mutation.
  */
 const useMutation: IUseMutation = <TResult, TVariables>(
-  query: string,
+  query: string | TypedDocumentString<TResult, TVariables>,
   options?: {
     guest?: boolean;
     client?: GraphQLClient | string;
     variables?: TVariables;
     operationName?: string;
     extensions?: {} | null;
-  },
+  }
 ) => {
   const client = useGraphQLClient(options && options.client, options && options.guest);
   /**
@@ -51,10 +52,10 @@ const useMutation: IUseMutation = <TResult, TVariables>(
    * @param {TVariables} [options2.variables] The variables to use for the mutation.
    * @returns {Promise<IQueryResult<TResult>>} A promise that resolves to the result of the mutation.
    */
-  var ret = (options2?: { variables?: TVariables }) => {
+  const ret = (options2?: { variables?: TVariables }) => {
     return client
       .ExecuteQueryRaw<TResult>({
-        query,
+        query: query.toString(),
         variables: (options2?.variables || options?.variables) as any,
         operationName: options && options.operationName,
         extensions: options && options.extensions,
