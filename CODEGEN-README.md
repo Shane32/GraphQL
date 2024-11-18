@@ -34,6 +34,8 @@ var sdlBytes = System.Text.Encoding.UTF8.GetBytes(schema.Print(new() {
 }));
 
 app.UseEndpoints(endpoints => {
+    // ...your existing code in here, if any...
+
     endpoints.MapGet("/api/graphqlschema/add-guid-here", async context => {
         context.Response.ContentType = "application/graphql; charset=utf-8";
         context.Response.StatusCode = 200;
@@ -154,6 +156,8 @@ After running, you should see:
 
 ## 6. Update Package Scripts
 
+**This part assumes that you are using Vite. If not, change what you need to accordingly.**
+
 Modify your `package.json` scripts to integrate GraphQL Codegen with your development and build processes:
 
 ```json
@@ -172,7 +176,9 @@ This setup ensures that:
 
 ## 7. Writing Queries and Mutations
 
-Place `.ts` files containing your queries and mutations alongside the components using them. A sample query might look like this:
+Place `.ts` files containing your queries and mutations alongside the components using them. The file name of your queries and mutations should be something like this: `{Component Name}Queries.ts`. For example, if you had a component named `MyComponent.tsx`, your query and mutation file should be `MyComponentQueries.ts`.
+
+ A sample query might look like this:
 
 ```typescript
 import { gql } from "@shane32/graphql";
@@ -213,6 +219,12 @@ Make sure to include a `.prettierignore` file containing this:
 **/*.g.graphql
 ```
 
-In your `.eslintrc.cjs`, you need to change the `ignorePatterns` to this:
+In your `.eslintrc.cjs` (or equivalent file), you need to add (or change) the `ignorePatterns` to this:
 
-`ignorePatterns: ["dist", ".eslintrc.cjs", "*.g.ts", "*.g.tsx", "vite.config.ts", "codegen.ts"]`
+```json
+{
+  "ignorePatterns": ["dist", ".eslintrc.cjs", "*.g.ts", "*.g.tsx", "vite.config.ts", "codegen.ts"]
+}
+```
+
+**If you changed this file after running the "npm run dev" (or equivalent) command, you should stop and start the command you ran again.**
