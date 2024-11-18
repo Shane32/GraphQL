@@ -116,7 +116,7 @@ const result = await client.ExecuteQueryRaw<ProductQueryResult, ProductQueryVari
 ```tsx
 const ProductComponent = ({ productId }) => {
     const { error, data, refetch } = useQuery<ProductQueryResult, ProductQueryVariables>(productQuery, { variables: { id: productId } });
-  
+
     // display message if failed to retrieve data, with button to retry
     if (error) return <ErrorDisplay onClick={refetch}>{error.message}</ErrorDisplay>;
 
@@ -146,7 +146,7 @@ const UpdateProductPriceComponent = ({ productId }) => {
             alert('Failure');
         }
     };
-  
+
     return (
         <div>
             <button onClick={() => handleSubmit(50)}>Update Price to $50</button>
@@ -188,3 +188,7 @@ const ProductPriceUpdateComponent = ({ productId }) => {
     );
 };
 ```
+
+## GraphQL Codegen Support
+
+If you want to add GraphQL Codegen to your project, refer to [CODEGEN-README.md](./CODEGEN-README.md)
