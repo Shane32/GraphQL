@@ -53,18 +53,18 @@ const useMutation: IUseMutation = <TResult, TVariables>(
    * @returns {Promise<IQueryResult<TResult>>} A promise that resolves to the result of the mutation.
    */
   const ret = (options2?: { variables?: TVariables }) => {
-    return client
-      .ExecuteQueryRaw<TResult>({
-        query: query.toString(),
-        variables: (options2?.variables || options?.variables) as any,
-        operationName: options && options.operationName,
-        extensions: options && options.extensions,
-      })
-      .result.then((data) => {
-        if (data.data && !(data.errors && data.errors.length) && !data.networkError)
-          return Promise.resolve(data as IQuerySuccessfulResult<TResult>);
-        return Promise.reject(new GraphQLError(data));
-      });
+    const requestVariables = {
+      variables: (options2?.variables || options?.variables) as any,
+      operationName: options && options.operationName,
+      extensions: options && options.extensions,
+    };
+    const documentId = (query as TypedDocumentString<TResult, TVariables>).__meta__?.hash;
+    const request = documentId ? { ...requestVariables, documentId } : { ...requestVariables, query };
+    return client.ExecuteQueryRaw<TResult>(request).result.then((data) => {
+      if (data.data && !(data.errors && data.errors.length) && !data.networkError)
+        return Promise.resolve(data as IQuerySuccessfulResult<TResult>);
+      return Promise.reject(new GraphQLError(data));
+    });
   };
   return [ret];
 };
