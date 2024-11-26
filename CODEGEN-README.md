@@ -95,6 +95,7 @@ const config: CodegenConfig = {
       },
     },
   },
+  errorsOnly: true,
 };
 
 export default config;
