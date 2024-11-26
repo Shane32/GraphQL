@@ -1,43 +1,21 @@
-import GraphQLClient from "./GraphQLClient";
-import GraphQLContext from "./GraphQLContext";
-import IGraphQLContext from "./IGraphQLContext";
-import IGraphQLConfiguration from "./IGraphQLConfiguration";
-import IRequest from "./IRequest";
-import GraphQLError from "./GraphQLError";
-import useQuery from "./useQuery";
-import useMutation from "./useMutation";
-import gql from "./GraphQLTag";
+export { default as GraphQLClient } from "./GraphQLClient";
+export { default as GraphQLContext } from "./GraphQLContext";
+export { default as IGraphQLContext } from "./IGraphQLContext";
+export { default as IGraphQLConfiguration } from "./IGraphQLConfiguration";
+export { default as IRequest } from "./IRequest";
+export { default as GraphQLError } from "./GraphQLError";
+export { default as useQuery } from "./useQuery";
+export { default as useMutation } from "./useMutation";
+export { default as gql } from "./GraphQLTag";
 
-import GraphQLTestClient from "./GraphQLTestClient";
-import IGraphQLTestConfig from "./IGraphQLTestConfig";
-import ITestQueryResult from "./ITestQueryResult";
-import ITestQuery from "./ITestQuery";
-import ITestDynamicQuery from "./ITestDynamicQuery";
+export { default as GraphQLTestClient } from "./GraphQLTestClient";
+export { default as IGraphQLTestConfig } from "./IGraphQLTestConfig";
+export { default as ITestQueryResult } from "./ITestQueryResult";
+export { default as ITestQuery } from "./ITestQuery";
+export { default as ITestDynamicQuery } from "./ITestDynamicQuery";
 
-import IQueryResponse from "./IQueryResponse";
-import IQueryResult from "./IQueryResult";
-import IQuerySuccessfulResult from "./IQuerySuccessfulResult";
-import IGraphQLError from "./IGraphQLError";
-import IGraphQLClient from "./IGraphQLClient";
-
-export {
-  GraphQLClient,
-  IGraphQLConfiguration,
-  IRequest,
-  IQueryResponse,
-  IQueryResult,
-  IQuerySuccessfulResult,
-  IGraphQLError,
-  IGraphQLClient,
-  IGraphQLContext,
-  GraphQLContext,
-  GraphQLError,
-  useQuery,
-  useMutation,
-  gql,
-  GraphQLTestClient,
-  ITestQueryResult,
-  ITestQuery,
-  ITestDynamicQuery,
-  IGraphQLTestConfig,
-};
+export { default as IQueryResponse } from "./IQueryResponse";
+export { default as IQueryResult } from "./IQueryResult";
+export { default as IQuerySuccessfulResult } from "./IQuerySuccessfulResult";
+export { default as IGraphQLError } from "./IGraphQLError";
+export { default as IGraphQLClient } from "./IGraphQLClient";
