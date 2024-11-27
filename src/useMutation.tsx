@@ -1,3 +1,4 @@
+import { convertDocumentId } from "./convertDocumentId";
 import GraphQLClient from "./GraphQLClient";
 import GraphQLError from "./GraphQLError";
 import IQuerySuccessfulResult from "./IQuerySuccessfulResult";
@@ -59,7 +60,9 @@ const useMutation: IUseMutation = <TResult, TVariables>(
       extensions: options && options.extensions,
     };
     const documentId = (query as TypedDocumentString<TResult, TVariables>).__meta__?.hash;
-    const request = documentId ? { ...requestVariables, documentId } : { ...requestVariables, query };
+    const request = documentId
+      ? { ...requestVariables, documentId: convertDocumentId(documentId) }
+      : { ...requestVariables, query: query.toString() };
     return client.ExecuteQueryRaw<TResult>(request).result.then((data) => {
       if (data.data && !(data.errors && data.errors.length) && !data.networkError)
         return Promise.resolve(data as IQuerySuccessfulResult<TResult>);

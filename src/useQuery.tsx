@@ -1,4 +1,5 @@
 import * as React from "react";
+import { convertDocumentId } from "./convertDocumentId";
 import GraphQLError from "./GraphQLError";
 import IGraphQLClient from "./IGraphQLClient";
 import IGraphQLError from "./IGraphQLError";
@@ -88,7 +89,7 @@ const useQuery: <TResult, TVariables = unknown>(
       operationName: options?.operationName,
       extensions: options?.extensions,
     };
-    const request = documentId ? { ...requestVariables, documentId } : { ...requestVariables, query };
+    const request = documentId ? { ...requestVariables, documentId: convertDocumentId("sha256:") } : { ...requestVariables, query };
     return client.ExecuteQuery<TResult, TVariables>(request as any, options?.fetchPolicy);
   }, [
     client,
