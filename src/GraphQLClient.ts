@@ -61,7 +61,8 @@ export default class GraphQLClient implements IGraphQLClient {
     // If the request should be sent as a form, create a FormData object and append the necessary fields
     if (this.asForm) {
       const formData = new FormData();
-      formData.append("query", request.query);
+      if (request.query) formData.append("query", request.query);
+      if (request.documentId) formData.append("documentId", request.documentId);
       if (request.variables) formData.append("variables", JSON.stringify(request.variables));
       if (request.operationName) formData.append("operationName", request.operationName);
       if (request.extensions) formData.append("extensions", JSON.stringify(request.extensions));

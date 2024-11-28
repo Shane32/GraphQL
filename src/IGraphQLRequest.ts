@@ -7,7 +7,12 @@ interface IGraphQLRequestWithArguments<TVariables> {
   /**
    * The GraphQL query string.
    */
-  query: string;
+  query?: string;
+
+  /**
+   * The document ID for the query.
+   */
+  documentId?: string;
 
   /**
    * The variables for the query.
@@ -32,7 +37,12 @@ interface IGraphQLRequestNoArguments {
   /**
    * The GraphQL query string.
    */
-  query: string;
+  query?: string;
+
+  /**
+   * The document ID for the query.
+   */
+  documentId?: string;
 
   /**
    * The variables for the query, which should be null for requests with no variables.

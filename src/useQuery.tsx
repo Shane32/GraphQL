@@ -1,4 +1,5 @@
 import * as React from "react";
+import { convertDocumentId } from "./convertDocumentId";
 import GraphQLError from "./GraphQLError";
 import IGraphQLClient from "./IGraphQLClient";
 import IGraphQLError from "./IGraphQLError";
@@ -74,7 +75,8 @@ const useQuery: <TResult, TVariables = unknown>(
   query: string | TypedDocumentString<TResult, TVariables>,
   options?: IOptions<TVariables>
 ) => {
-  query = query.toString();
+  const documentId = (query as TypedDocumentString<TResult, TVariables>).__meta__?.hash;
+  query = documentId ? "" : query.toString();
   const client = useGraphQLClient(options && options.client, options && options.guest);
   const currentVariables = options?.variables;
   const lastQueryResponseRef = React.useRef<IQueryResult<TResult>>();
@@ -82,17 +84,18 @@ const useQuery: <TResult, TVariables = unknown>(
     // any time the options change, reset any cached returned value
     lastQueryResponseRef.current = undefined;
     if (options?.skip) return null;
-    const request = {
-      query,
+    const requestVariables = {
       variables: currentVariables,
       operationName: options?.operationName,
       extensions: options?.extensions,
     };
+    const request = documentId ? { ...requestVariables, documentId: convertDocumentId("sha256:") } : { ...requestVariables, query };
     return client.ExecuteQuery<TResult, TVariables>(request as any, options?.fetchPolicy);
   }, [
     client,
     options?.skip,
     query,
+    documentId,
     JSON.stringify(currentVariables || null),
     options?.operationName,
     JSON.stringify(options?.extensions || null),

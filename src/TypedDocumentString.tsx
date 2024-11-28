@@ -16,6 +16,16 @@ interface TypedDocumentString<TResult, TVariables> extends String {
   __apiType?: DocumentTypeDecoration<TResult, TVariables>["__apiType"];
 
   /**
+   * Metadata associated with the persisted document.
+   */
+  __meta__?: {
+    /**
+     * A hash representing the document's content. Useful for the persisted document specification.
+     */
+    hash?: string;
+  };
+
+  /**
    * Overrides the `toString` method to return a string while retaining the associated
    * type information defined in `DocumentTypeDecoration`. This ensures that even when
    * treated as a string, the type metadata is preserved.
