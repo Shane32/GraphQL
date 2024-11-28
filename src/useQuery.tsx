@@ -89,7 +89,7 @@ const useQuery: <TResult, TVariables = unknown>(
       operationName: options?.operationName,
       extensions: options?.extensions,
     };
-    const request = documentId ? { ...requestVariables, documentId: convertDocumentId("sha256:") } : { ...requestVariables, query };
+    const request = documentId ? { ...requestVariables, documentId: convertDocumentId(documentId) } : { ...requestVariables, query };
     return client.ExecuteQuery<TResult, TVariables>(request as any, options?.fetchPolicy);
   }, [
     client,
