@@ -45,7 +45,7 @@
     "react-dom": ">=16"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^14.0.0",
     "@types/jest": "^27.5.2",
     "@types/pretty": "^2.0.1",
