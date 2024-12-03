@@ -7,13 +7,13 @@ This guide provides step-by-step instructions to configure and use GraphQL Codeg
 Start by installing the necessary development dependencies:
 
 ```bash
-npm install --save-dev @graphql-codegen/cli @graphql-codegen/schema-ast @parcel/watcher @graphql-codegen/near-operation-file-preset concurrently @0no-co/graphqlsp
+npm install --save-dev @graphql-codegen/cli @graphql-codegen/schema-ast @parcel/watcher @shane32/graphql-codegen-near-operation-file-plugin concurrently @0no-co/graphqlsp
 ```
 
 - `@graphql-codegen/cli`: Core CLI tool to run code generation.
 - `@graphql-codegen/schema-ast`: Plugin for generating a schema file from your GraphQL API endpoint (optional if you already have a schema file).
 - `@parcel/watcher`: Enables watch mode for the codegen CLI, which automatically updates files.
-- `@graphql-codegen/near-operation-file-preset`: Preset to generate TypeScript types near your GraphQL operations for better organization.
+- `@shane32/graphql-codegen-near-operation-file-plugin`: Plugin to generate TypeScript type exports near your GraphQL operations for better organization.
 - `concurrently`: Allows running multiple scripts concurrently, useful for combining watch mode and other tasks.
 - `@0no-co/graphqlsp`: TypeScript LSP Plugin that will recognise documents in your TypeScript code and help you out with hover-information, diagnostics and auto-complete.
 
@@ -66,26 +66,22 @@ const config: CodegenConfig = {
   documents: "./src/**/!(*.g).{ts,tsx}",
   ignoreNoDocuments: true,
   generates: {
-    ["./src/graphql/types.g.ts"]: {
-      plugins: ["typescript"],
+    [`./src/gql/`]: {
+      preset: "client",
+      presetConfig: {
+        fragmentMasking: false,
+      },
+      plugins: ["@shane32/graphql-codegen-near-operation-file-plugin"],
       config: {
+        documentMode: "string",
         scalars: {
           DateOnly: "string",
           DateTimeOffset: "string",
           Decimal: "number",
           Uri: "string",
         },
-      },
-    },
-    [`./src`]: {
-      preset: "near-operation-file",
-      presetConfig: {
-        extension: ".g.ts",
-        baseTypesPath: "/graphql/types.g.ts",
-      },
-      plugins: ["typescript-operations", "typed-document-node"],
-      config: {
-        documentMode: "string",
+        strictScalars: true,
+        skipTypename: true,
       },
     },
     ["./schema.g.graphql"]: {
@@ -103,7 +99,41 @@ export default config;
 
 **Make sure to replace "your-schema-url" with the actual URL of your GraphQL schema.**
 
-## 4. Setup @0no-co/graphqlsp
+## 4. Create the `codegen-production.ts` Configuration File
+
+In the root of your project, add a `codegen.ts` file with the following content:
+
+```typescript
+import type { CodegenConfig } from "@graphql-codegen/cli";
+import type { Types } from "@graphql-codegen/plugin-helpers";
+import config from "./codegen";
+
+const gqlOutput = config.generates["./src/gql/"] as Types.ConfiguredOutput;
+
+const configProduction: CodegenConfig = {
+    ...config,
+    generates: {
+        ...config.generates,
+        [`./src/gql/`]: {
+            ...gqlOutput,
+            presetConfig: {
+                ...gqlOutput.presetConfig,
+                // to enable persisted queries, uncomment the following block
+                /*
+                persistedDocuments: {
+                  mode: "replaceDocumentWithHash",
+                  hashAlgorithm: "sha256",
+                },
+                */
+            },
+        },
+    },
+};
+
+export default configProduction;
+```
+
+## 5. Setup @0no-co/graphqlsp
 
 Modify the `tsconfig.json` to include the @no-co/graphqlsp plugin:
 
@@ -133,7 +163,7 @@ Then we need to prompt Visual Studio Code to use the local TypeScript version by
 
 ---
 
-## 5. Run Codegen
+## 6. Run Codegen
 
 To generate the `schema.g.graphql` file and GraphQL client code, run:
 
@@ -155,7 +185,7 @@ After running, you should see:
 
 **Note:** You don't need to manually edit files within `src/graphql` as they are auto-generated.
 
-## 6. Update Package Scripts
+## 7. Update Package Scripts
 
 **This part assumes that you are using Vite. If not, change what you need to accordingly.**
 
@@ -165,7 +195,7 @@ Modify your `package.json` scripts to integrate GraphQL Codegen with your develo
 {
   "scripts": {
     "dev": "concurrently \"vite\" \"graphql-codegen --watch\"",
-    "build": "graphql-codegen && tsc && vite build"
+    "build": "graphql-codegen --config codegen-production.ts && tsc && vite build"
   }
 }
 ```
@@ -175,7 +205,7 @@ This setup ensures that:
 - During development (`npm run dev`), both the Vite dev server and GraphQL Codegen watch mode run simultaneously
 - During build (`npm run build`), GraphQL types are generated before the TypeScript compilation and Vite build process
 
-## 7. Writing Queries and Mutations
+## 8. Writing Queries and Mutations
 
 Place `.ts` files containing your queries and mutations alongside the components using them. The file name of your queries and mutations should be something like this: `{Component Name}Queries.ts`. For example, if you had a component named `MyComponent.tsx`, your query and mutation file should be `MyComponentQueries.ts`.
 
@@ -218,13 +248,14 @@ Make sure to include a `.prettierignore` file containing this:
 **/*.g.ts
 **/*.g.tsx
 **/*.g.graphql
+**/src/gql/*
 ```
 
 In your `.eslintrc.cjs` (or equivalent file), you need to add (or change) the `ignorePatterns` to this:
 
 ```json
 {
-  "ignorePatterns": ["dist", ".eslintrc.cjs", "*.g.ts", "*.g.tsx", "vite.config.ts", "codegen.ts"]
+  "ignorePatterns": ["dist", ".eslintrc.cjs", "*.g.ts", "*.g.tsx", "vite.config.ts", "codegen*.ts"]
 }
 ```
 
