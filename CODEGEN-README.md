@@ -101,7 +101,7 @@ export default config;
 
 ## 4. Create the `codegen-production.ts` Configuration File
 
-In the root of your project, add a `codegen.ts` file with the following content:
+In the root of your project, add a `codegen-production.ts` file with the following content:
 
 ```typescript
 import type { CodegenConfig } from "@graphql-codegen/cli";
