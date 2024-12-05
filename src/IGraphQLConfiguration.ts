@@ -48,6 +48,12 @@ interface IGraphQLConfiguration {
    * Indicates whether the request should be sent as a form instead of JSON.
    */
   asForm?: boolean;
+
+  /**
+   * Indicates whether the `documentId` should be included as a query parameter
+   * in the URL instead of being part of the POST body.
+   */
+  sendDocumentIdAsQuery?: boolean;
 }
 
 export default IGraphQLConfiguration;
