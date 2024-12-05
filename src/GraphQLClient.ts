@@ -32,6 +32,7 @@ export default class GraphQLClient implements IGraphQLClient {
   private pendingRequests: number;
   private activeSubscriptions: number;
   private asForm?: boolean;
+  private sendDocumentIdAsQuery?: boolean;
 
   public constructor(configuration: IGraphQLConfiguration) {
     this.url = configuration.url;
@@ -49,6 +50,7 @@ export default class GraphQLClient implements IGraphQLClient {
     this.pendingRequests = 0;
     this.activeSubscriptions = 0;
     this.asForm = configuration.asForm;
+    this.sendDocumentIdAsQuery = configuration.sendDocumentIdAsQuery;
   }
 
   public GetPendingRequests = () => this.pendingRequests;
@@ -62,14 +64,25 @@ export default class GraphQLClient implements IGraphQLClient {
     if (this.asForm) {
       const formData = new FormData();
       if (request.query) formData.append("query", request.query);
-      if (request.documentId) formData.append("documentId", request.documentId);
+      if (request.documentId && !this.sendDocumentIdAsQuery) formData.append("documentId", request.documentId);
       if (request.variables) formData.append("variables", JSON.stringify(request.variables));
       if (request.operationName) formData.append("operationName", request.operationName);
       if (request.extensions) formData.append("extensions", JSON.stringify(request.extensions));
       body = formData;
     } else {
       // Otherwise, send the request as a JSON string
-      body = JSON.stringify(request);
+      if (request.documentId && this.sendDocumentIdAsQuery) {
+        const { documentId, ...partialRequest } = request;
+        body = JSON.stringify(partialRequest);
+      } else {
+        body = JSON.stringify(request);
+      }
+    }
+
+    // define the url
+    let url = this.url;
+    if (request.documentId && this.sendDocumentIdAsQuery) {
+      url += (url.indexOf("?") >= 0 ? "&" : "?") + "documentId=" + encodeURIComponent(request.documentId);
     }
 
     // Create a cancel source using the AbortController API, if it is available
@@ -77,7 +90,7 @@ export default class GraphQLClient implements IGraphQLClient {
 
     // Create a new IRequest object with the URL, method, body, headers, and cancel signal
     const config: IRequest = {
-      url: this.url,
+      url: url,
       method: "POST",
       body: body,
       headers: this.asForm ? undefined : { "Content-Type": "application/json" },
