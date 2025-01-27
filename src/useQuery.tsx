@@ -113,25 +113,32 @@ const useQuery: <TResult, TVariables = unknown>(
     return unsubscribe;
   }, [queryRet]);
 
-  // if skipped, return...nothing
-  if (!queryRet) {
-    return {
-      loading: false,
-      refetch: () => Promise.reject(new Error("Cannot refetch a skipped query")),
-    };
-  }
-
   // prep refresh function to throw a GraphQLError if there were any query errors
-  const refresh = () => {
+  const refresh = React.useCallback(() => {
+    if (!queryRet) return Promise.reject(new Error("Cannot refetch a skipped query"));
     return queryRet.refresh().then((data) => {
       if (data.data && !(data.errors && data.errors.length)) return Promise.resolve(data);
       return Promise.reject(new GraphQLError(data));
     });
-  };
+  }, [queryRet]);
+
+  // if skipped, return...nothing
+  if (!queryRet) {
+    return {
+      loading: false,
+      refetch: refresh,
+    };
+  }
 
   // return the query data, unless there was errors and it's reloading
   const anyErrors = !!(data && data.errors && data.errors.length);
-  if (queryRet.loading && anyErrors)
+  const errorResponse = React.useMemo(() => data && new GraphQLError(data), [data]);
+  if (!queryRet)
+    return {
+      loading: false,
+      refetch: refresh,
+    };
+  else if (queryRet.loading && anyErrors)
     return {
       loading: true,
       refetch: refresh,
@@ -139,7 +146,7 @@ const useQuery: <TResult, TVariables = unknown>(
   else
     return {
       ...data,
-      error: anyErrors ? new GraphQLError(data) : undefined,
+      error: anyErrors ? errorResponse! : undefined,
       loading: queryRet.loading,
       refetch: refresh,
     };
