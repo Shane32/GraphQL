@@ -122,27 +122,21 @@ const useQuery: <TResult, TVariables = unknown>(
     });
   }, [queryRet]);
 
-  // if skipped, return...nothing
-  if (!queryRet) {
-    return {
-      loading: false,
-      refetch: refresh,
-    };
-  }
-
-  // return the query data, unless there was errors and it's reloading
   const anyErrors = !!(data && data.errors && data.errors.length);
   const errorResponse = React.useMemo(() => data && new GraphQLError(data), [data]);
   if (!queryRet)
+    // if skipped, return nothing
     return {
       loading: false,
       refetch: refresh,
     };
   else if (queryRet.loading && anyErrors)
+    // return the query data, unless there was errors and it's reloading
     return {
       loading: true,
       refetch: refresh,
     };
+  // return the response / error
   else
     return {
       ...data,
