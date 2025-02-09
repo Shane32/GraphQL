@@ -6,6 +6,7 @@ import IQueryResult from "./IQueryResult";
 import ITestDynamicQuery from "./ITestDynamicQuery";
 import ITestQuery from "./ITestQuery";
 import ITestQueryResult from "./ITestQueryResult";
+import TypedDocumentString from "./TypedDocumentString";
 
 // Import parse and print from the graphql package
 import { parse, print, DocumentNode, OperationDefinitionNode } from "graphql";
@@ -77,7 +78,10 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
   private TestQueriesArray: Array<ITestDynamicQuery<any, any>> = [];
 
   public AddTestQuery = <TResult, TVariables = undefined>(
-    arg: ITestQuery<TResult, TVariables> | ITestDynamicQuery<TResult, TVariables>,
+    arg:
+      | (ITestQuery<TResult, TVariables> & { query?: string })
+      | (Omit<ITestQuery<TResult, TVariables>, "query"> & { query?: TypedDocumentString<TResult, TVariables> })
+      | ITestDynamicQuery<TResult, TVariables>,
   ) => {
     if (isFunction(arg)) {
       const arg2 = arg as ITestDynamicQuery<TResult, TVariables>;
@@ -90,19 +94,23 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
         // request has the same documentId.
         if (arg2.documentId != null) {
           if (input.documentId !== arg2.documentId) return null;
+        } else if ((arg2.query as TypedDocumentString<TResult, TVariables>)?.__meta__?.hash) {
+          // If the query is a TypedDocumentString with a hash, match against documentId
+          if (input.documentId !== (arg2.query as TypedDocumentString<TResult, TVariables>).__meta__?.hash) return null;
         } else {
           // Otherwise, fall back to matching based on the query text.
           if (!arg2.query) return null;
 
+          const testQueryText = arg2.query.toString();
           if (this.MatchAnyPart) {
             // Always use arg2.operationName (do not fall back to input.operationName)
-            if (!compareGraphQLDocuments(arg2.query, input.query || "", arg2.operationName)) {
+            if (!compareGraphQLDocuments(testQueryText, input.query || "", arg2.operationName)) {
               return null;
             }
           } else {
-            const testQueryText = arg2.query.trim();
+            const trimmedTestQuery = testQueryText.trim();
             const inputQueryText = input.query ? input.query.trim() : "";
-            if (testQueryText !== inputQueryText) return null;
+            if (trimmedTestQuery !== inputQueryText) return null;
           }
         }
 
