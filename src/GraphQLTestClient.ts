@@ -7,8 +7,57 @@ import ITestDynamicQuery from "./ITestDynamicQuery";
 import ITestQuery from "./ITestQuery";
 import ITestQueryResult from "./ITestQueryResult";
 
+// Import parse and print from the graphql package
+import { parse, print, DocumentNode, OperationDefinitionNode } from "graphql";
+
 function isFunction(functionToCheck: any) {
   return functionToCheck && {}.toString.call(functionToCheck) === "[object Function]";
+}
+
+/**
+ * Given a parsed GraphQL document and an optional operation name,
+ * returns the proper operation definition.
+ *
+ * If an operation name is given, it is used to select the proper
+ * operation; otherwise, if there is exactly one operation, that one is used.
+ * (If there are multiple operations and no name is given, we fall back to
+ * returning the first one.)
+ */
+function extractOperation(document: DocumentNode, operationName?: string | null): OperationDefinitionNode | null {
+  const operations = document.definitions.filter((def) => def.kind === "OperationDefinition") as OperationDefinitionNode[];
+  if (operationName) {
+    return operations.find((op) => op.name && op.name.value === operationName) || null;
+  } else {
+    return operations.length === 1 ? operations[0] : operations[0] || null;
+  }
+}
+
+/**
+ * Compares two GraphQL query documents based on their parsed operations.
+ * It extracts the operation corresponding to the provided operationName (if any) and
+ * checks if the input's operation string includes the test's operation string.
+ * If parsing fails, it falls back to simple trimmed string matching.
+ *
+ * @param testQuery The query string from the test configuration.
+ * @param inputQuery The query string from the incoming request.
+ * @param opName The operation name to be used for extraction (from the test configuration).
+ * @returns True if the documents are considered a match, false otherwise.
+ */
+function compareGraphQLDocuments(testQuery: string, inputQuery: string, opName?: string): boolean {
+  try {
+    const testAST = parse(testQuery);
+    const inputAST = parse(inputQuery || "");
+    const testOp = extractOperation(testAST, opName);
+    const inputOp = extractOperation(inputAST, opName);
+    if (!testOp || !inputOp) return false;
+    const testOpStr = print(testOp);
+    const inputOpStr = print(inputOp);
+    return inputOpStr === testOpStr;
+  } catch (e) {
+    const testQueryText = testQuery.trim();
+    const inputQueryText = inputQuery ? inputQuery.trim() : "";
+    return inputQueryText.includes(testQueryText);
+  }
 }
 
 /**
@@ -28,7 +77,7 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
   private TestQueriesArray: Array<ITestDynamicQuery<any, any>> = [];
 
   public AddTestQuery = <TResult, TVariables = undefined>(
-    arg: ITestQuery<TResult, TVariables> | ITestDynamicQuery<TResult, TVariables>
+    arg: ITestQuery<TResult, TVariables> | ITestDynamicQuery<TResult, TVariables>,
   ) => {
     if (isFunction(arg)) {
       const arg2 = arg as ITestDynamicQuery<TResult, TVariables>;
@@ -44,10 +93,16 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
         } else {
           // Otherwise, fall back to matching based on the query text.
           if (!arg2.query) return null;
-          const testQueryText = arg2.query.trim();
-          const inputQueryText = input.query ? input.query.trim() : "";
-          if (this.MatchAnyPart ? !inputQueryText.includes(testQueryText) : testQueryText !== inputQueryText) {
-            return null;
+
+          if (this.MatchAnyPart) {
+            // Always use arg2.operationName (do not fall back to input.operationName)
+            if (!compareGraphQLDocuments(arg2.query, input.query || "", arg2.operationName)) {
+              return null;
+            }
+          } else {
+            const testQueryText = arg2.query.trim();
+            const inputQueryText = input.query ? input.query.trim() : "";
+            if (testQueryText !== inputQueryText) return null;
           }
         }
 
@@ -68,7 +123,7 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     const result = this.ExecuteTestQuery<TReturn, TVariables>(request);
     if (!result) {
       throw new Error(
-        'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null)
+        'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null),
       );
     }
     return {
@@ -101,12 +156,12 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
 
   public ExecuteQuery = <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
-    cacheMode?: "no-cache" | "cache-first" | "cache-and-network"
+    cacheMode?: "no-cache" | "cache-first" | "cache-and-network",
   ) => {
     const queryResult = this.ExecuteTestQuery<TReturn, TVariables>(request);
     if (!queryResult) {
       throw new Error(
-        'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null)
+        'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null),
       );
     }
     const result = this.CreateQueryResult(queryResult);
@@ -124,7 +179,7 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
   };
 
   public ExecuteTestQuery: <TReturn, TVariables>(request: IGraphQLRequest<TVariables>) => ITestQueryResult<TReturn> | null = (
-    request: IGraphQLRequest<any>
+    request: IGraphQLRequest<any>,
   ) => {
     for (let i = this.TestQueriesArray.length - 1; i >= 0; i--) {
       const ret = this.TestQueriesArray[i](request);
