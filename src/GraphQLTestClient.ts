@@ -18,6 +18,13 @@ function isFunction(functionToCheck: any) {
  * @implements {IGraphQLTestConfig}
  */
 export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestConfig {
+  /**
+   * When set to true, the matching algorithm will consider a test query a match
+   * if its (trimmed) query string is found anywhere in the incoming request's
+   * (trimmed) query string. Otherwise, it will require an exact match.
+   */
+  public MatchAnyPart: boolean = false;
+
   private TestQueriesArray: Array<ITestDynamicQuery<any, any>> = [];
 
   public AddTestQuery = <TResult, TVariables = undefined>(
@@ -29,14 +36,26 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     } else {
       const arg2 = arg as ITestQuery<TResult, TVariables>;
       this.TestQueriesArray.push((input) => {
-        if (
-          arg2.query === input.query &&
-          (arg2.operationName || null) === (input.operationName || null) &&
-          JSON.stringify(arg2.variables || null) == JSON.stringify(input.variables || null) &&
-          JSON.stringify(arg2.extensions || null) == JSON.stringify(input.extensions || null)
-        )
-          return arg2.result;
-        return null;
+        // --- Matching documentId ---
+        // If a documentId is provided in the test query, require that the input
+        // request has the same documentId.
+        if (arg2.documentId != null) {
+          if (input.documentId !== arg2.documentId) return null;
+        } else {
+          // Otherwise, fall back to matching based on the query text.
+          if (!arg2.query) return null;
+          const testQueryText = arg2.query.trim();
+          const inputQueryText = input.query ? input.query.trim() : "";
+          if (this.MatchAnyPart ? !inputQueryText.includes(testQueryText) : testQueryText !== inputQueryText) {
+            return null;
+          }
+        }
+
+        // --- Matching other properties ---
+        if ((arg2.operationName || null) !== (input.operationName || null)) return null;
+        if (JSON.stringify(arg2.variables || null) !== JSON.stringify(input.variables || null)) return null;
+        if (JSON.stringify(arg2.extensions || null) !== JSON.stringify(input.extensions || null)) return null;
+        return arg2.result;
       });
     }
   };
@@ -84,15 +103,15 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     request: IGraphQLRequest<TVariables>,
     cacheMode?: "no-cache" | "cache-first" | "cache-and-network"
   ) => {
-    var queryResult = this.ExecuteTestQuery<TReturn, TVariables>(request);
+    const queryResult = this.ExecuteTestQuery<TReturn, TVariables>(request);
     if (!queryResult) {
       throw new Error(
         'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null)
       );
     }
-    var result = this.CreateQueryResult(queryResult);
-    var resultPromise = Promise.resolve(result);
-    var ret: IQueryResponse<TReturn> = {
+    const result = this.CreateQueryResult(queryResult);
+    const resultPromise = Promise.resolve(result);
+    const ret: IQueryResponse<TReturn> = {
       result: result,
       forceRefresh: () => {},
       clearAndRefresh: () => {},
@@ -108,7 +127,7 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     request: IGraphQLRequest<any>
   ) => {
     for (let i = this.TestQueriesArray.length - 1; i >= 0; i--) {
-      var ret = this.TestQueriesArray[i](request);
+      const ret = this.TestQueriesArray[i](request);
       if (ret) return ret;
     }
     return null;
