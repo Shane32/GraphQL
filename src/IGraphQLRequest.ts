@@ -45,9 +45,9 @@ interface IGraphQLRequestNoArguments {
   documentId?: string;
 
   /**
-   * The variables for the query, which should be null for requests with no variables.
+   * The variables for the query, which should be null or an empty object for requests with no variables.
    */
-  variables?: null;
+  variables?: null | NoVariables;
 
   /**
    * Additional extensions for the query.
@@ -65,7 +65,9 @@ interface IGraphQLRequestNoArguments {
  *
  * @template TVariables The type of the variables, if any.
  */
-type IGraphQLRequest<TVariables = undefined> = TVariables extends undefined
+type NoVariables = { [key: string]: never };
+
+type IGraphQLRequest<TVariables = undefined> = TVariables extends undefined | NoVariables
   ? IGraphQLRequestNoArguments
   : IGraphQLRequestWithArguments<TVariables>;
 
