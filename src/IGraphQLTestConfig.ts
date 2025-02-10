@@ -1,5 +1,6 @@
 import ITestDynamicQuery from "./ITestDynamicQuery";
 import ITestQuery from "./ITestQuery";
+import TypedDocumentString from "./TypedDocumentString";
 
 /**
  * Represents a configuration for testing GraphQL queries.
@@ -12,7 +13,12 @@ interface IGraphQLTestConfig {
    * @template TVariables The type of the query variables, if any.
    * @param arg The test query to add.
    */
-  AddTestQuery: <TResult, TVariables = undefined>(arg: ITestQuery<TResult, TVariables> | ITestDynamicQuery<TResult, TVariables>) => void;
+  AddTestQuery: <TResult, TVariables = undefined>(
+    arg:
+      | (ITestQuery<TResult, TVariables> & { query?: string })
+      | (Omit<ITestQuery<TResult, TVariables>, "query"> & { query?: TypedDocumentString<TResult, TVariables> })
+      | ITestDynamicQuery<TResult, TVariables>,
+  ) => void;
 }
 
 export default IGraphQLTestConfig;
