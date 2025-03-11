@@ -13,19 +13,19 @@ jobs:
 #          - windows-latest
         node: 
           - 18.x
-          - 19.x
+          - 20.x
+          - 22.x
+          - 23.x
         react:
           - 16
           - 17
           - 18
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - name: Update npm
-        run: npm install -g npm@9
       - name: Install modules - actor ${{ github.actor }} - version ${{ github.run_number }}
         run: npm ci
       - name: Install react
