@@ -192,3 +192,35 @@ const ProductPriceUpdateComponent = ({ productId }) => {
 ## GraphQL Codegen Support
 
 If you want to add GraphQL Codegen to your project, refer to [CODEGEN-README.md](./CODEGEN-README.md)
+
+## Creating Request Objects
+
+You can use the `createRequest` function to construct GraphQL request objects that conform to the `IGraphQLRequest` interface:
+
+```typescript
+import { createRequest } from '@shane32/graphql';
+
+// With a string query
+const request = createRequest(
+  `query GetProduct($id: ID!) { product(id: $id) { name price } }`,
+  {
+    variables: { id: "123" },
+    extensions: { persistedQuery: true },
+    operationName: "GetProduct"
+  }
+);
+
+// With a TypedDocumentString (from codegen)
+const request = createRequest(
+  GetProductDocument,
+  {
+    variables: { id: "123" },
+    extensions: { persistedQuery: true }
+  }
+);
+
+// Use with a client
+const result = await client.ExecuteQueryRaw(request).result;
+```
+
+This is useful when you need to create request objects outside of the provided hooks, or when building custom GraphQL client implementations.

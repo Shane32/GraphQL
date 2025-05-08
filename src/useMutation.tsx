@@ -3,6 +3,7 @@ import GraphQLError from "./GraphQLError";
 import IQuerySuccessfulResult from "./IQuerySuccessfulResult";
 import TypedDocumentString from "./TypedDocumentString";
 import useGraphQLClient from "./useGraphQLClient";
+import createRequest from "./createRequest";
 
 /**
  * Represents the `useMutation` hook.
@@ -18,7 +19,7 @@ type IUseMutation = <TResult, TVariables>(
     operationName?: string;
     /** Additional extensions to add to the mutation. */
     extensions?: {} | null;
-  }
+  },
 ) => [(options?: { variables?: TVariables }) => Promise<IQuerySuccessfulResult<TResult>>];
 
 /**
@@ -42,7 +43,7 @@ const useMutation: IUseMutation = <TResult, TVariables>(
     variables?: TVariables;
     operationName?: string;
     extensions?: {} | null;
-  }
+  },
 ) => {
   const client = useGraphQLClient(options && options.client, options && options.guest);
   /**
@@ -53,14 +54,12 @@ const useMutation: IUseMutation = <TResult, TVariables>(
    * @returns {Promise<IQueryResult<TResult>>} A promise that resolves to the result of the mutation.
    */
   const ret = (options2?: { variables?: TVariables }) => {
-    const requestVariables = {
+    const request = createRequest(query, {
       variables: (options2?.variables || options?.variables) as any,
-      operationName: options && options.operationName,
-      extensions: options && options.extensions,
-    };
-    const documentId = (query as TypedDocumentString<TResult, TVariables>).__meta__?.hash;
-    const request = documentId ? { ...requestVariables, documentId } : { ...requestVariables, query: query.toString() };
-    return client.ExecuteQueryRaw<TResult>(request).result.then((data) => {
+      operationName: options?.operationName,
+      extensions: options?.extensions,
+    });
+    return client.ExecuteQueryRaw<TResult, TVariables>(request).result.then((data) => {
       if (data.data && !(data.errors && data.errors.length) && !data.networkError)
         return Promise.resolve(data as IQuerySuccessfulResult<TResult>);
       return Promise.reject(new GraphQLError(data));
