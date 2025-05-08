@@ -6,6 +6,7 @@ import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
 import TypedDocumentString from "./TypedDocumentString";
 import useGraphQLClient from "./useGraphQLClient";
+import createRequest from "./createRequest";
 
 /**
  * Represents the return type of the `useQuery` hook.
@@ -69,13 +70,11 @@ interface IOptions<TVariables> {
  */
 const useQuery: <TResult, TVariables = unknown>(
   query: string | TypedDocumentString<TResult, TVariables>,
-  options?: IOptions<TVariables>
+  options?: IOptions<TVariables>,
 ) => IUseQueryRet<TResult> = <TResult, TVariables = unknown>(
   query: string | TypedDocumentString<TResult, TVariables>,
-  options?: IOptions<TVariables>
+  options?: IOptions<TVariables>,
 ) => {
-  const documentId = (query as TypedDocumentString<TResult, TVariables>).__meta__?.hash;
-  query = documentId ? "" : query.toString();
   const client = useGraphQLClient(options && options.client, options && options.guest);
   const currentVariables = options?.variables;
   const lastQueryResponseRef = React.useRef<IQueryResult<TResult>>();
@@ -83,18 +82,18 @@ const useQuery: <TResult, TVariables = unknown>(
     // any time the options change, reset any cached returned value
     lastQueryResponseRef.current = undefined;
     if (options?.skip) return null;
-    const requestVariables = {
+
+    const request = createRequest(query, {
       variables: currentVariables,
       operationName: options?.operationName,
       extensions: options?.extensions,
-    };
-    const request = documentId ? { ...requestVariables, documentId } : { ...requestVariables, query };
-    return client.ExecuteQuery<TResult, TVariables>(request as any, options?.fetchPolicy);
+    });
+
+    return client.ExecuteQuery<TResult, TVariables>(request, options?.fetchPolicy);
   }, [
     client,
     options?.skip,
     query,
-    documentId,
     JSON.stringify(currentVariables || null),
     options?.operationName,
     JSON.stringify(options?.extensions || null),
