@@ -33,6 +33,8 @@ export default class GraphQLClient implements IGraphQLClient {
   private activeSubscriptions: number;
   private asForm?: boolean;
   private sendDocumentIdAsQuery?: boolean;
+  private logHttpError?: (request: IRequest, response: Response) => void;
+  private logWebSocketConnectionError?: (request: IGraphQLRequest<any>, connectionMessage: any, receivedMessage: any) => void;
 
   public constructor(configuration: IGraphQLConfiguration) {
     this.url = configuration.url;
@@ -51,6 +53,8 @@ export default class GraphQLClient implements IGraphQLClient {
     this.activeSubscriptions = 0;
     this.asForm = configuration.asForm;
     this.sendDocumentIdAsQuery = configuration.sendDocumentIdAsQuery;
+    this.logHttpError = configuration.logHttpError;
+    this.logWebSocketConnectionError = configuration.logWebSocketConnectionError;
   }
 
   public GetPendingRequests = () => this.pendingRequests;
@@ -122,6 +126,12 @@ export default class GraphQLClient implements IGraphQLClient {
                 // Decrement the number of pending requests
                 this.pendingRequests -= 1;
 
+                // Log non-2xx status codes if the callback is defined
+                if (this.logHttpError && (data.status < 200 || data.status >= 300)) {
+                  // Clone the response to avoid consuming it
+                  this.logHttpError(request, data.clone());
+                }
+
                 // Check if the response status is valid (between 200 and 299 or between 400 and 499)
                 const valid = (data.status >= 200 && data.status < 300) || (data.status >= 400 && data.status < 500);
 
@@ -157,7 +167,7 @@ export default class GraphQLClient implements IGraphQLClient {
                 this.pendingRequests -= 1;
                 // Rethrow the error
                 return Promise.reject(error);
-              }
+              },
             )
             .catch((error) => {
               // If an unhandled error occurs, create a new query result object with the error message and the underlying error
@@ -192,7 +202,7 @@ export default class GraphQLClient implements IGraphQLClient {
             size: 1000,
           };
           return Promise.resolve(queryRet);
-        }
+        },
       );
 
     // Return an object with the result promise and an abort function that cancels the request
@@ -210,7 +220,7 @@ export default class GraphQLClient implements IGraphQLClient {
   public ExecuteQuery = <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     cacheMode?: "no-cache" | "cache-first" | "cache-and-network",
-    cacheTimeout?: number
+    cacheTimeout?: number,
   ) => {
     // Set cache mode based on input or default cache policy
     cacheMode = cacheMode || this.defaultCachePolicy;
@@ -315,7 +325,7 @@ export default class GraphQLClient implements IGraphQLClient {
   public ExecuteSubscription = <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
-    onClose: () => void
+    onClose: () => void,
   ) => {
     this.activeSubscriptions += 1;
     const subscriptionId = "1";
@@ -417,6 +427,14 @@ export default class GraphQLClient implements IGraphQLClient {
               webSocket.send(JSON.stringify({ type: "pong", payload: message.payload }));
             } else if (state === "opening") {
               if (message.type !== "connection_ack") {
+                // Log WebSocket connection error if the callback is defined
+                if (this.logWebSocketConnectionError) {
+                  const connectionMessage = {
+                    type: "connection_init",
+                    payload: payload,
+                  };
+                  this.logWebSocketConnectionError(request, connectionMessage, message);
+                }
                 doError("Invalid connection response from WebSocket server");
               } else {
                 state = "connected";
@@ -429,7 +447,7 @@ export default class GraphQLClient implements IGraphQLClient {
                     id: subscriptionId,
                     type: "subscribe",
                     payload: request,
-                  })
+                  }),
                 );
               }
             } else if (state === "connected") {
@@ -476,7 +494,7 @@ export default class GraphQLClient implements IGraphQLClient {
         // when failed to generate payload, notify caller
         (error) => {
           doError(error);
-        }
+        },
       );
     });
 
@@ -522,7 +540,7 @@ export default class GraphQLClient implements IGraphQLClient {
   private GetOrCreateCacheEntry = (
     queryAndVariablesString: string,
     newEntryFactory: (cacheEntry: ICacheEntry) => void,
-    noCache: boolean
+    noCache: boolean,
   ) => {
     // this always adds the new entry even if the lifetime is zero
     const valueFromCache = this.cache.get(queryAndVariablesString);

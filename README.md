@@ -41,6 +41,21 @@ const client = new GraphQLClient({
 
     // optional; provides payload for WebSocket connection initialization messages; used to provide authentication information to request
     generatePayload: () => Promise.resolve({})
+
+    // optional; callback for logging non-2xx HTTP status codes
+    logHttpError: (request, response) => {
+        console.error(`GraphQL request failed with status ${response.status} ${response.statusText}`);
+        response.text().then(body => console.error(`Response body: ${body}`));
+    }
+
+    // optional; callback for logging WebSocket connection failures
+    logWebSocketConnectionError: (request, connectionMessage, receivedMessage) => {
+        console.error(`WebSocket connection failed`, {
+            request,
+            connectionMessage,
+            receivedMessage
+        });
+    }
 });
 ```
 
