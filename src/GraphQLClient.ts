@@ -487,7 +487,15 @@ export default class GraphQLClient implements IGraphQLClient {
             }
           };
           // when websocket closed, notify caller (only raises error if not closed from this end)
-          webSocket.onclose = () => {
+          webSocket.onclose = (ev: CloseEvent) => {
+            // Log WebSocket connection error if the callback is defined
+            if (this.logWebSocketConnectionError) {
+              const connectionMessage = {
+                type: "connection_init",
+                payload: payload,
+              };
+              this.logWebSocketConnectionError(request, connectionMessage, ev);
+            }
             doError("WebSocket connection unexpectedly closed");
           };
         },
