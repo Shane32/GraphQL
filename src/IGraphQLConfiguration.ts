@@ -1,4 +1,5 @@
 import IRequest from "./IRequest";
+import IGraphQLRequest from "./IGraphQLRequest";
 
 /**
  * Represents configuration options for making GraphQL requests.
@@ -54,6 +55,23 @@ interface IGraphQLConfiguration {
    * in the URL instead of being part of the POST body.
    */
   sendDocumentIdAsQuery?: boolean;
+
+  /**
+   * A callback function for logging non-2xx status codes.
+   *
+   * @param request The original request that resulted in this error.
+   * @param response The HTTP response object.
+   */
+  logHttpError?: (request: IRequest, response: Response) => void;
+
+  /**
+   * A callback function for logging WebSocket connection failures.
+   *
+   * @param request The original GraphQL request that initiated the subscription.
+   * @param connectionMessage The message sent to the server to initialize the connection.
+   * @param receivedMessage The unexpected message that was received, if available.
+   */
+  logWebSocketConnectionError?: (request: IGraphQLRequest<any>, connectionMessage: any, receivedMessage: any) => void;
 }
 
 export default IGraphQLConfiguration;
