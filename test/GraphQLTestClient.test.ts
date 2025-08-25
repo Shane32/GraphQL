@@ -117,6 +117,7 @@ test("executeQueryRaw with form", async () => {
   await waitFor(() => expect(requests.length).toEqual(1));
   expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
   expect(requests[0].request.method).toEqual("POST");
+  console.error("headers", requests[0].request.headers);
   const formData = await requests[0].request.formData();
   expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
   requests[0].resolve(
