@@ -47,13 +47,13 @@ const useQueryTest = async (useStrictMode: boolean, count: number, fetchPolicy: 
           <GraphQLContext.Provider value={{ client }}>
             <TestUseQuery />
           </GraphQLContext.Provider>
-        </StrictMode>
+        </StrictMode>,
       );
     } else {
       render(
         <GraphQLContext.Provider value={{ client }}>
           <TestUseQuery />
-        </GraphQLContext.Provider>
+        </GraphQLContext.Provider>,
       );
     }
   });
@@ -78,8 +78,8 @@ const useQueryTest = async (useStrictMode: boolean, count: number, fetchPolicy: 
         {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        }
-      )
+        },
+      ),
     );
   }
   await waitFor(() => expect(screen.getByText("Version: 12345")).toBeInTheDocument());
@@ -99,7 +99,7 @@ const useQueryWithHashTest = async (
   useStrictMode: boolean,
   count: number,
   fetchPolicy: "no-cache" | "cache-first" | "cache-and-network",
-  hashInUrl: boolean
+  hashInUrl: boolean,
 ) => {
   act(() => {
     const client = new GraphQLClient({
@@ -113,13 +113,13 @@ const useQueryWithHashTest = async (
           <GraphQLContext.Provider value={{ client }}>
             <TestUseQuery />
           </GraphQLContext.Provider>
-        </StrictMode>
+        </StrictMode>,
       );
     } else {
       render(
         <GraphQLContext.Provider value={{ client }}>
           <TestUseQuery />
-        </GraphQLContext.Provider>
+        </GraphQLContext.Provider>,
       );
     }
   });
@@ -127,7 +127,7 @@ const useQueryWithHashTest = async (
   await waitFor(() => expect(requests.length).toEqual(count));
   for (let i = 0; i < count; i++) {
     expect(requests[i].request.url).toEqual(
-      hashInUrl ? "https://api.zbox.com/api/graphql?documentId=myhash" : "https://api.zbox.com/api/graphql"
+      hashInUrl ? "https://api.zbox.com/api/graphql?documentId=myhash" : "https://api.zbox.com/api/graphql",
     );
     expect(requests[i].request.method).toEqual("POST");
     const formData = await requests[i].request.formData();
@@ -151,8 +151,8 @@ const useQueryWithHashTest = async (
         {
           status: 200,
           headers: { "Content-Type": "application/json" },
-        }
-      )
+        },
+      ),
     );
   }
   await waitFor(() => expect(screen.getByText("Version: 12345")).toBeInTheDocument());
