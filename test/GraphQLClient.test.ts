@@ -27,7 +27,7 @@ afterEach(() => {
 
 test("executeQueryRaw with json", async () => {
   const client = new GraphQLClient({
-    url: "https://api.zbox.com/api/graphql",
+    url: "https://api.example.com/api/graphql",
   });
   const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
     query: "{ v1 { info { version } } }",
@@ -35,7 +35,7 @@ test("executeQueryRaw with json", async () => {
 
   // simulate API call
   await waitFor(() => expect(requests.length).toEqual(1));
-  expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+  expect(requests[0].request.url).toEqual("https://api.example.com/api/graphql");
   expect(requests[0].request.method).toEqual("POST");
   const formData = await requests[0].request.json();
   expect(JSON.stringify(formData)).toEqual('{"query":"{ v1 { info { version } } }"}');
@@ -65,7 +65,7 @@ test("executeQueryRaw with json", async () => {
 
 test("executeQueryRaw with json and alt response type", async () => {
   const client = new GraphQLClient({
-    url: "https://api.zbox.com/api/graphql",
+    url: "https://api.example.com/api/graphql",
   });
   const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
     query: "{ v1 { info { version } } }",
@@ -73,7 +73,7 @@ test("executeQueryRaw with json and alt response type", async () => {
 
   // simulate API call
   await waitFor(() => expect(requests.length).toEqual(1));
-  expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+  expect(requests[0].request.url).toEqual("https://api.example.com/api/graphql");
   expect(requests[0].request.method).toEqual("POST");
   const formData = await requests[0].request.json();
   expect(JSON.stringify(formData)).toEqual('{"query":"{ v1 { info { version } } }"}');
@@ -105,7 +105,7 @@ test("executeQueryRaw with json and alt response type", async () => {
 
 test("executeQueryRaw with form", async () => {
   const client = new GraphQLClient({
-    url: "https://api.zbox.com/api/graphql",
+    url: "https://api.example.com/api/graphql",
     asForm: true,
   });
   const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
@@ -114,7 +114,7 @@ test("executeQueryRaw with form", async () => {
 
   // simulate API call
   await waitFor(() => expect(requests.length).toEqual(1));
-  expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+  expect(requests[0].request.url).toEqual("https://api.example.com/api/graphql");
   expect(requests[0].request.method).toEqual("POST");
   const formData = await requests[0].request.formData();
   expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
@@ -144,7 +144,7 @@ test("executeQueryRaw with form", async () => {
 
 test("executeQuery", async () => {
   const client = new GraphQLClient({
-    url: "https://api.zbox.com/api/graphql",
+    url: "https://api.example.com/api/graphql",
     asForm: true,
   });
   const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache");
@@ -154,7 +154,7 @@ test("executeQuery", async () => {
 
   // simulate API call
   await waitFor(() => expect(requests.length).toEqual(1));
-  expect(requests[0].request.url).toEqual("https://api.zbox.com/api/graphql");
+  expect(requests[0].request.url).toEqual("https://api.example.com/api/graphql");
   expect(requests[0].request.method).toEqual("POST");
   const formData = await requests[0].request.formData();
   expect(formData.get("query")).toEqual("{ v1 { info { version } } }");
