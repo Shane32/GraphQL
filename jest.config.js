@@ -10,6 +10,7 @@ module.exports = {
     fetch: globalThis.fetch,
     Request: globalThis.Request,
     Response: globalThis.Response,
+    FormData: globalThis.FormData,
     AbortController: globalThis.AbortController,
     AbortSignal: globalThis.AbortSignal,
     "ts-jest": {
