@@ -1,7 +1,7 @@
 {
   "name": "shane-graphql",
   "version": "0.2.2",
-  "description": "",
+  "description": "A TypeScript-first GraphQL client for React applications with built-in caching, subscriptions, and testing utilities.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "umd:main": "dist/umd/index.js",
