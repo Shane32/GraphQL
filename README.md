@@ -335,16 +335,16 @@ This is useful when you need to create request objects outside of the provided h
 
 #### Methods
 
-| Method | Parameters | Description |
-|--------|------------|-------------|
-| `ExecuteQueryRaw<TData, TVariables>` | `request: IGraphQLRequest<TVariables>` | Execute a GraphQL query, returns `{ result: Promise<IQueryResult<TData>>, abort: () => void }` |
-| `ExecuteQuery<TData, TVariables>` | `request: IGraphQLRequest<TVariables>`, `cacheMode?`, `cacheTimeout?` | Execute a GraphQL query with caching, returns `IQueryResponse<TData>` |
-| `ExecuteSubscription<TData, TVariables>` | `request: IGraphQLRequest<TVariables>`, `onData: (data: IQueryResult<TData>) => void`, `onClose: () => void` | Execute a GraphQL subscription, returns `{ connected: Promise<void>, abort: () => void }` |
-| `GetPendingRequests` | - | Get count of pending requests |
-| `GetActiveSubscriptions` | - | Get count of active subscriptions |
-| `RefreshAll` | `force?: boolean` | Refresh all cached queries |
-| `ClearCache` | - | Clear the query cache |
-| `ResetStore` | - | Reset and refresh all cached queries |
+| Method | Description | Notes |
+|--------|-------------|-------|
+| `ExecuteQueryRaw<TData, TVariables>` | Execute a GraphQL query | |
+| `ExecuteQuery<TData, TVariables>` | Execute a GraphQL query with caching | |
+| `ExecuteSubscription<TData, TVariables>` | Execute a GraphQL subscription | |
+| `GetPendingRequests` | Get count of pending requests | |
+| `GetActiveSubscriptions` | Get count of active subscriptions | |
+| `RefreshAll` | Refresh all cached queries | The `force` option cancels any in-progress requests and forces all cached queries to be refetched from the server, even if they are currently loading |
+| `ClearCache` | Clear the query cache | |
+| `ResetStore` | Reset and refresh all cached queries | Should be used anytime the user is logged in/out to refresh permissions |
 
 ### React Hooks
 
