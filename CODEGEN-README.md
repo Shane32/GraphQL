@@ -50,8 +50,6 @@ app.UseEndpoints(endpoints => {
 
 **Be sure to replace "add-guid-here" with an actual GUID.**
 
-Refer to [this example](https://github.com/ZboxGlobal/HiveServer/blob/57ede7b7d33033dc1c4fb0e56dd0ba147841230a/Tests/Infrastructure/EndToEnd.cs#L234) for adding in a test for your SDL schema.
-
 ## 3. Create the `codegen.ts` Configuration File
 
 In the root of your project, add a `codegen.ts` file with the following content:
