@@ -22,6 +22,7 @@ beforeEach(() => {
 
 afterEach(() => {
   requests = [];
+  jest.restoreAllMocks();
 });
 
 test("executeQueryRaw with json", async () => {
@@ -52,8 +53,8 @@ test("executeQueryRaw with json", async () => {
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
-    )
+      },
+    ),
   );
 
   // verify result
@@ -92,8 +93,8 @@ test("executeQueryRaw with json and alt response type", async () => {
         headers: {
           "Content-Type": "application/graphql-response+json",
         },
-      }
-    )
+      },
+    ),
   );
 
   // verify result
@@ -131,8 +132,8 @@ test("executeQueryRaw with form", async () => {
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
-    )
+      },
+    ),
   );
 
   // verify result
@@ -171,8 +172,8 @@ test("executeQuery", async () => {
       {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }
-    )
+      },
+    ),
   );
 
   // verify result

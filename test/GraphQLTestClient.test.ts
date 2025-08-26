@@ -24,6 +24,7 @@ beforeEach(() => {
 
 afterEach(() => {
   requests = [];
+  jest.restoreAllMocks();
 });
 
 test("executeQueryRaw with json", async () => {
