@@ -31,6 +31,7 @@ beforeEach(() => {
 
 afterEach(() => {
   requests = [];
+  jest.restoreAllMocks();
 });
 
 const StrictMode = (React as any).StrictMode ?? React.Fragment;
