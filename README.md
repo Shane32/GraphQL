@@ -48,7 +48,7 @@ This package requires the following peer dependencies:
 
 - `react` >= 16
 - `react-dom` >= 16
-- `graphql` >= 16 (optional, only needed for TypedDocumentString support)
+- `graphql` >= 16 (optional, only needed for testing via `GraphQLTestClient`)
 
 ### Requirements
 
