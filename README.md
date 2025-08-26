@@ -319,19 +319,19 @@ This is useful when you need to create request objects outside of the provided h
 
 #### Constructor Options
 
-| Parameter | Required | Default | Description |
-|-----------|----------|---------|-------------|
-| `url` | Yes | - | GraphQL endpoint URL |
-| `webSocketUrl` |  | - | WebSocket endpoint URL for subscriptions |
-| `defaultFetchPolicy` |  | `'cache-first'` | Default caching strategy. Options: `'cache-first'`, `'no-cache'`, `'cache-and-network'` |
-| `defaultCacheTime` |  | `86400000` | Cache duration in milliseconds (24 hours) |
-| `maxCacheSize` |  | `20971520` | Maximum cache size in bytes (20MB) |
-| `asForm` |  | `false` | Use form data instead of JSON for requests |
-| `sendDocumentIdAsQuery` |  | `false` | Include documentId as query parameter instead of POST body |
-| `transformRequest` |  | - | Transform requests (e.g., add auth headers) |
-| `generatePayload` |  | - | Generate WebSocket connection payload |
-| `logHttpError` |  | - | Log HTTP errors |
-| `logWebSocketConnectionError` |  | - | Log WebSocket errors |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `url` (required) | - | GraphQL endpoint URL |
+| `webSocketUrl` | - | WebSocket endpoint URL for subscriptions |
+| `defaultFetchPolicy` | `'cache-first'` | Default caching strategy. Options: `'cache-first'`, `'no-cache'`, `'cache-and-network'` |
+| `defaultCacheTime` | `86400000` | Cache duration in milliseconds (24 hours) |
+| `maxCacheSize` | `20971520` | Maximum cache size in bytes (20MB) |
+| `asForm` | `false` | Use form data instead of JSON for requests |
+| `sendDocumentIdAsQuery` | `false` | Include documentId as query parameter instead of POST body |
+| `transformRequest` | - | Transform requests (e.g., add auth headers) |
+| `generatePayload` | - | Generate WebSocket connection payload |
+| `logHttpError` | - | Log HTTP errors |
+| `logWebSocketConnectionError` | - | Log WebSocket errors |
 
 #### Methods
 
@@ -354,18 +354,18 @@ Execute a GraphQL query with caching and automatic re-rendering.
 
 **Parameters:**
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `query` | Yes | GraphQL query string or typed document |
-| `options` |  | Query options |
-| `options.variables` |  | Query variables |
-| `options.fetchPolicy` |  | Caching strategy. Options: `'cache-first'`, `'no-cache'`, `'cache-and-network'` |
-| `options.client` |  | Client instance or name from context |
-| `options.guest` |  | Whether to use the guest client |
-| `options.skip` |  | Whether to skip execution of the query |
-| `options.autoRefetch` |  | Whether to automatically refetch when query/variables change |
-| `options.operationName` |  | The name of the operation |
-| `options.extensions` |  | Additional extensions to add to the query |
+| Parameter | Description |
+|-----------|-------------|
+| `query` (required) | GraphQL query string or typed document |
+| `options` | Query options |
+| `options.variables` | Query variables |
+| `options.fetchPolicy` | Caching strategy. Options: `'cache-first'`, `'no-cache'`, `'cache-and-network'` |
+| `options.client` | Client instance or name from context |
+| `options.guest` | Whether to use the guest client |
+| `options.skip` | Whether to skip execution of the query |
+| `options.autoRefetch` | Whether to automatically refetch when query/variables change |
+| `options.operationName` | The name of the operation |
+| `options.extensions` | Additional extensions to add to the query |
 
 **Returns:**
 
@@ -385,15 +385,15 @@ Execute a GraphQL mutation.
 
 **Parameters:**
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `mutation` | Yes | GraphQL mutation string or typed document |
-| `options` |  | Mutation options |
-| `options.client` |  | Client instance or name from context |
-| `options.guest` |  | Whether to use the guest client |
-| `options.variables` |  | Default variables for the mutation |
-| `options.operationName` |  | The name of the operation |
-| `options.extensions` |  | Additional extensions to add to the mutation |
+| Parameter | Description |
+|-----------|-------------|
+| `mutation` (required) | GraphQL mutation string or typed document |
+| `options` | Mutation options |
+| `options.client` | Client instance or name from context |
+| `options.guest` | Whether to use the guest client |
+| `options.variables` | Default variables for the mutation |
+| `options.operationName` | The name of the operation |
+| `options.extensions` | Additional extensions to add to the mutation |
 
 **Returns:**
 
