@@ -319,32 +319,32 @@ This is useful when you need to create request objects outside of the provided h
 
 #### Constructor Options
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `url` | `string` | ✅ | - | GraphQL endpoint URL |
-| `webSocketUrl` | `string` | ❌ | - | WebSocket endpoint URL for subscriptions |
-| `defaultFetchPolicy` | `'cache-first' \| 'no-cache' \| 'cache-and-network'` | ❌ | `'cache-first'` | Default caching strategy |
-| `defaultCacheTime` | `number` | ❌ | `86400000` | Cache duration in milliseconds (24 hours) |
-| `maxCacheSize` | `number` | ❌ | `20971520` | Maximum cache size in bytes (20MB) |
-| `asForm` | `boolean` | ❌ | `false` | Use form data instead of JSON for requests |
-| `sendDocumentIdAsQuery` | `boolean` | ❌ | `false` | Include documentId as query parameter instead of POST body |
-| `transformRequest` | `(request: IRequest) => IRequest \| PromiseLike<IRequest>` | ❌ | - | Transform requests (e.g., add auth headers) |
-| `generatePayload` | `() => {} \| PromiseLike<{}>` | ❌ | - | Generate WebSocket connection payload |
-| `logHttpError` | `(request: IRequest, response: Response) => void` | ❌ | - | Log HTTP errors |
-| `logWebSocketConnectionError` | `(request: IGraphQLRequest<any>, connectionMessage: any, receivedMessage: any) => void` | ❌ | - | Log WebSocket errors |
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `url` | Yes | - | GraphQL endpoint URL |
+| `webSocketUrl` |  | - | WebSocket endpoint URL for subscriptions |
+| `defaultFetchPolicy` |  | `'cache-first'` | Default caching strategy. Options: `'cache-first'`, `'no-cache'`, `'cache-and-network'` |
+| `defaultCacheTime` |  | `86400000` | Cache duration in milliseconds (24 hours) |
+| `maxCacheSize` |  | `20971520` | Maximum cache size in bytes (20MB) |
+| `asForm` |  | `false` | Use form data instead of JSON for requests |
+| `sendDocumentIdAsQuery` |  | `false` | Include documentId as query parameter instead of POST body |
+| `transformRequest` |  | - | Transform requests (e.g., add auth headers) |
+| `generatePayload` |  | - | Generate WebSocket connection payload |
+| `logHttpError` |  | - | Log HTTP errors |
+| `logWebSocketConnectionError` |  | - | Log WebSocket errors |
 
 #### Methods
 
-| Method | Parameters | Returns | Description |
-|--------|------------|---------|-------------|
-| `ExecuteQueryRaw<TData, TVariables>` | `request: IGraphQLRequest<TVariables>` | `{ result: Promise<IQueryResult<TData>>, abort: () => void }` | Execute a GraphQL query |
-| `ExecuteQuery<TData, TVariables>` | `request: IGraphQLRequest<TVariables>`, `cacheMode?`, `cacheTimeout?` | `IQueryResponse<TData>` | Execute a GraphQL query with caching |
-| `ExecuteSubscription<TData, TVariables>` | `request: IGraphQLRequest<TVariables>`, `onData: (data: IQueryResult<TData>) => void`, `onClose: () => void` | `{ connected: Promise<void>, abort: () => void }` | Execute a GraphQL subscription |
-| `GetPendingRequests` | - | `number` | Get count of pending requests |
-| `GetActiveSubscriptions` | - | `number` | Get count of active subscriptions |
-| `RefreshAll` | `force?: boolean` | `void` | Refresh all cached queries |
-| `ClearCache` | - | `void` | Clear the query cache |
-| `ResetStore` | - | `void` | Reset and refresh all cached queries |
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `ExecuteQueryRaw<TData, TVariables>` | `request: IGraphQLRequest<TVariables>` | Execute a GraphQL query, returns `{ result: Promise<IQueryResult<TData>>, abort: () => void }` |
+| `ExecuteQuery<TData, TVariables>` | `request: IGraphQLRequest<TVariables>`, `cacheMode?`, `cacheTimeout?` | Execute a GraphQL query with caching, returns `IQueryResponse<TData>` |
+| `ExecuteSubscription<TData, TVariables>` | `request: IGraphQLRequest<TVariables>`, `onData: (data: IQueryResult<TData>) => void`, `onClose: () => void` | Execute a GraphQL subscription, returns `{ connected: Promise<void>, abort: () => void }` |
+| `GetPendingRequests` | - | Get count of pending requests |
+| `GetActiveSubscriptions` | - | Get count of active subscriptions |
+| `RefreshAll` | `force?: boolean` | Refresh all cached queries |
+| `ClearCache` | - | Clear the query cache |
+| `ResetStore` | - | Reset and refresh all cached queries |
 
 ### React Hooks
 
@@ -354,30 +354,30 @@ Execute a GraphQL query with caching and automatic re-rendering.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | `string \| TypedDocumentString<TResult, TVariables>` | ✅ | GraphQL query string or typed document |
-| `options` | `object` | ❌ | Query options |
-| `options.variables` | `TVariables` | ❌ | Query variables |
-| `options.fetchPolicy` | `'cache-first' \| 'no-cache' \| 'cache-and-network'` | ❌ | Caching strategy |
-| `options.client` | `IGraphQLClient \| string` | ❌ | Client instance or name from context |
-| `options.guest` | `boolean` | ❌ | Whether to use the guest client |
-| `options.skip` | `boolean` | ❌ | Whether to skip execution of the query |
-| `options.autoRefetch` | `boolean` | ❌ | Whether to automatically refetch when query/variables change |
-| `options.operationName` | `string` | ❌ | The name of the operation |
-| `options.extensions` | `object` | ❌ | Additional extensions to add to the query |
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `query` | Yes | GraphQL query string or typed document |
+| `options` |  | Query options |
+| `options.variables` |  | Query variables |
+| `options.fetchPolicy` |  | Caching strategy. Options: `'cache-first'`, `'no-cache'`, `'cache-and-network'` |
+| `options.client` |  | Client instance or name from context |
+| `options.guest` |  | Whether to use the guest client |
+| `options.skip` |  | Whether to skip execution of the query |
+| `options.autoRefetch` |  | Whether to automatically refetch when query/variables change |
+| `options.operationName` |  | The name of the operation |
+| `options.extensions` |  | Additional extensions to add to the query |
 
 **Returns:**
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `data` | `TResult \| null \| undefined` | Query result data |
-| `errors` | `Array<IGraphQLError> \| undefined` | Array of GraphQL errors |
-| `error` | `GraphQLError \| undefined` | GraphQL error object if any errors occurred |
-| `extensions` | `any` | Additional information returned by the query |
-| `networkError` | `boolean \| undefined` | Whether a network error occurred |
-| `loading` | `boolean` | Loading state |
-| `refetch` | `() => Promise<IQueryResult<TResult>>` | Function to refetch the query |
+| Property | Description |
+|----------|-------------|
+| `data` | Query result data |
+| `errors` | Array of GraphQL errors or `undefined` |
+| `error` | The first GraphQL error object if any errors occurred, otherwise `undefined` |
+| `extensions` | Additional information returned by the query |
+| `networkError` | Indicates whether a network error occurred |
+| `loading` | Indicates whether the query is presently loading |
+| `refetch` | Function to refetch the query |
 
 #### useMutation<TData, TVariables>
 
@@ -385,21 +385,21 @@ Execute a GraphQL mutation.
 
 **Parameters:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `mutation` | `string \| TypedDocumentString<TResult, TVariables>` | ✅ | GraphQL mutation string or typed document |
-| `options` | `object` | ❌ | Mutation options |
-| `options.client` | `GraphQLClient \| string` | ❌ | Client instance or name from context |
-| `options.guest` | `boolean` | ❌ | Whether to use the guest client |
-| `options.variables` | `TVariables` | ❌ | Default variables for the mutation |
-| `options.operationName` | `string` | ❌ | The name of the operation |
-| `options.extensions` | `object` | ❌ | Additional extensions to add to the mutation |
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `mutation` | Yes | GraphQL mutation string or typed document |
+| `options` |  | Mutation options |
+| `options.client` |  | Client instance or name from context |
+| `options.guest` |  | Whether to use the guest client |
+| `options.variables` |  | Default variables for the mutation |
+| `options.operationName` |  | The name of the operation |
+| `options.extensions` |  | Additional extensions to add to the mutation |
 
 **Returns:**
 
-| Index | Type | Description |
-|-------|------|-------------|
-| `[0]` | `(options?: { variables?: TVariables }) => Promise<IQuerySuccessfulResult<TResult>>` | Mutation function that returns a promise |
+| Index | Description |
+|-------|-------------|
+| `[0]` | Mutation function that returns a promise |
 
 ### Context
 
