@@ -29,7 +29,7 @@ interface IGraphQLClient {
    * @returns An object containing a promise for the query result and a function to abort the request.
    */
   ExecuteQueryRaw: <TReturn, TVariables = undefined>(
-    request: IGraphQLRequest<TVariables>
+    request: IGraphQLRequest<TVariables>,
   ) => { result: Promise<IQueryResult<TReturn>>; abort: () => void };
 
   /**
@@ -47,7 +47,7 @@ interface IGraphQLClient {
   ExecuteQuery: <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     cacheMode?: "no-cache" | "cache-first" | "cache-and-network",
-    cacheTimeout?: number
+    cacheTimeout?: number,
   ) => IQueryResponse<TReturn>;
 
   /**
@@ -61,7 +61,7 @@ interface IGraphQLClient {
   ExecuteSubscription: <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
-    onClose: () => void
+    onClose: () => void,
   ) => { connected: Promise<void>; abort: () => void };
 
   /**
