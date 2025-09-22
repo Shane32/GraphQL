@@ -10,6 +10,7 @@ export { default as useSubscription } from "./useSubscription";
 export { default as useAutoSubscription } from "./useAutoSubscription";
 export { default as gql } from "./GraphQLTag";
 export { default as createRequest } from "./createRequest";
+export { default as CloseReason } from "./CloseReason";
 
 export { default as GraphQLTestClient } from "./GraphQLTestClient";
 export { default as IGraphQLTestConfig } from "./IGraphQLTestConfig";
