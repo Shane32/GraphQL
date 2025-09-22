@@ -5,6 +5,7 @@ import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
 import IRequest from "./IRequest";
 import IWebSocketMessage from "./IWebSocketMessage";
+import CloseReason from "./CloseReason";
 
 interface ICacheEntry {
   queryAndVariablesString: string;
@@ -325,21 +326,25 @@ export default class GraphQLClient implements IGraphQLClient {
   public ExecuteSubscription = <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
-    onClose: () => void,
+    onClose: (reason: CloseReason) => void,
   ) => {
     this.activeSubscriptions += 1;
     const subscriptionId = "1";
     // set up abort
     let aborted = false;
-    let doAbort: () => void = null!;
+    let closeReason: CloseReason = undefined!; // always set by doAbort before used by abortPromise
+    let doAbort: (reason: CloseReason) => void = null!;
     const abortPromise = new Promise<void>((doAbort2) => {
-      doAbort = doAbort2;
+      doAbort = (reason) => {
+        closeReason = reason;
+        doAbort2();
+      };
     });
     // abort will set aborted and call onClose
     abortPromise.then(() => {
       this.activeSubscriptions -= 1;
       aborted = true;
-      onClose();
+      onClose(closeReason);
     });
     // set up data push
     const doData = (data: IQueryResult<TReturn>) => {
@@ -361,7 +366,7 @@ export default class GraphQLClient implements IGraphQLClient {
         size: 1000,
       };
       onData(queryRet);
-      doAbort();
+      doAbort(CloseReason.Error);
     };
 
     // set up connection promise
@@ -473,13 +478,13 @@ export default class GraphQLClient implements IGraphQLClient {
                   size: (ev.data as string).length,
                   errors: message.payload,
                 });
-                doAbort();
+                doAbort(CloseReason.Error);
               } else if (message.type === "complete") {
                 if (message.id !== subscriptionId) {
                   doError("Invalid payload for 'complete' packet");
                   return;
                 }
-                doAbort();
+                doAbort(CloseReason.Server);
               } else {
                 // unknown message type
                 doError("Unknown message type from WebSocket server");
@@ -508,7 +513,7 @@ export default class GraphQLClient implements IGraphQLClient {
 
     return {
       connected: connectionPromise,
-      abort: doAbort,
+      abort: () => doAbort(CloseReason.Client),
     };
   };
 
