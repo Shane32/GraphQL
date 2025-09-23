@@ -411,17 +411,14 @@ export default class GraphQLClient implements IGraphQLClient {
             webSocket.close();
           });
 
-          // Create safe send function for timeout strategy
-          const safeSend = (msg: ClientMsg) => {
-            if (!aborted && webSocket.readyState === WebSocket.OPEN) {
-              webSocket.send(JSON.stringify(msg));
-              timeoutStrategy?.onOutbound?.(msg);
-            }
-          };
-
           // Create timeout API for strategy
           timeoutStrategy?.attach({
-            send: safeSend,
+            send: (msg: ClientMsg) => {
+              if (!aborted && webSocket.readyState === WebSocket.OPEN) {
+                webSocket.send(JSON.stringify(msg));
+                timeoutStrategy.onOutbound?.(msg);
+              }
+            },
             abort: doAbort,
             request,
             subscriptionId,
