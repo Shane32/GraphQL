@@ -287,8 +287,6 @@ const ProductPriceUpdateComponent = ({ productId }) => {
 
 The client supports configurable timeout strategies for subscriptions to handle connection reliability and heartbeat management. You can set a default timeout strategy for all subscriptions or specify one per subscription.
 
-#### Available Timeout Strategies
-
 **IdleTimeoutStrategy** aborts the subscription if no inbound messages are received within the specified timeout period.
 
 ```typescript
@@ -307,9 +305,7 @@ import { CorrelatedPingStrategy } from '@shane32/graphql';
 const pingStrategy = new CorrelatedPingStrategy(5000, 10000, 3000);
 ```
 
-#### Using Timeout Strategies
-
-You can set the default timeout strategy as follows:
+You can set the default timeout strategy within the `defaultSubscriptionOptions` configuration setting as follows:
 
 ```typescript
 const client = new GraphQLClient({
@@ -321,7 +317,7 @@ const client = new GraphQLClient({
 });
 ```
 
-Alternatively, you can set the timeout strategy for a specific subscription:
+Alternatively, you can set the timeout strategy for a specific subscription when calling `ExecuteSubscription`:
 
 ```typescript
 const { connected, abort } = client.ExecuteSubscription(
@@ -481,6 +477,7 @@ interface IGraphQLContext {
 Aborts subscriptions if no inbound messages are received within the specified timeout period.
 
 **Constructor:**
+
 - `idleMs` (number): Timeout in milliseconds
 
 #### CorrelatedPingStrategy
@@ -488,6 +485,7 @@ Aborts subscriptions if no inbound messages are received within the specified ti
 Sends periodic pings and expects matching pongs within a deadline. Aborts if pong is not received in time.
 
 **Constructor:**
+
 - `ackTimeoutMs` (number): Connection acknowledgment timeout in milliseconds
 - `pingIntervalMs` (number): Interval between ping messages in milliseconds
 - `pongDeadlineMs` (number): Maximum time to wait for pong response in milliseconds
