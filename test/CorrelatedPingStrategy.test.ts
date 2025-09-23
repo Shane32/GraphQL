@@ -154,7 +154,7 @@ describe("CorrelatedPingStrategy", () => {
       // Send ping
       jest.advanceTimersByTime(5000);
       const pingCall = mockApi.send.mock.calls[0][0];
-      const pingId = pingCall.payload.id;
+      const pingId = pingCall.payload?.id;
 
       // Receive matching pong
       const pongMessage: IWebSocketMessage<any> = {
@@ -385,7 +385,7 @@ describe("CorrelatedPingStrategy", () => {
       setTimeout(() => {
         // Get the ping ID
         const pingCall = mockApi.send.mock.calls[0][0];
-        const pingId = pingCall.payload.id;
+        const pingId = pingCall.payload?.id;
 
         // Send matching pong
         shortTimeoutStrategy.onInbound?.({

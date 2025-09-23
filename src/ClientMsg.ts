@@ -3,7 +3,7 @@
  */
 type ClientMsg = {
   type: string;
-  payload?: Record<string, any>;
+  payload?: Record<string, any> | null;
   id?: string;
 };
 
