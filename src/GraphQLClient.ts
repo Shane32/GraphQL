@@ -411,18 +411,14 @@ export default class GraphQLClient implements IGraphQLClient {
             webSocket.close();
           });
 
-          // Create timeout API for strategy
-          timeoutStrategy?.attach({
-            send: (msg: ClientMsg) => {
-              if (!aborted && webSocket.readyState === WebSocket.OPEN) {
-                webSocket.send(JSON.stringify(msg));
-                timeoutStrategy.onOutbound?.(msg);
-              }
-            },
-            abort: doAbort,
-            request,
-            subscriptionId,
-          });
+          // define send function
+          const send = (msg: ClientMsg) => {
+            if (!aborted && webSocket.readyState === 1) {
+              // OPEN
+              webSocket.send(JSON.stringify(msg));
+              timeoutStrategy?.onOutbound?.(msg);
+            }
+          };
 
           // set up state machine
           let state: "opening" | "connected" = "opening";
@@ -430,12 +426,10 @@ export default class GraphQLClient implements IGraphQLClient {
           webSocket.onopen = () => {
             if (aborted) return;
             timeoutStrategy?.onOpen?.();
-            const message = {
+            send({
               type: "connection_init",
               payload: payload,
-            };
-            webSocket.send(JSON.stringify(message));
-            timeoutStrategy?.onOutbound?.(message);
+            });
           };
 
           // when message received, process it
@@ -463,9 +457,7 @@ export default class GraphQLClient implements IGraphQLClient {
 
             // process message based on state machine
             if (message.type === "ping") {
-              const pongMsg = { type: "pong", payload: message.payload };
-              webSocket.send(JSON.stringify(pongMsg));
-              timeoutStrategy?.onOutbound?.(pongMsg);
+              send({ type: "pong", payload: message.payload });
             } else if (state === "opening") {
               if (message.type !== "connection_ack") {
                 // Log WebSocket connection error if the callback is defined
@@ -484,13 +476,11 @@ export default class GraphQLClient implements IGraphQLClient {
                   resolveConnection();
                 }
                 timeoutStrategy?.onAck?.();
-                const subscribeMsg = {
+                send({
                   id: subscriptionId,
                   type: "subscribe",
                   payload: request,
-                };
-                webSocket.send(JSON.stringify(subscribeMsg));
-                timeoutStrategy?.onOutbound?.(subscribeMsg);
+                });
               }
             } else if (state === "connected") {
               if (message.type === "next") {
@@ -541,6 +531,14 @@ export default class GraphQLClient implements IGraphQLClient {
             }
             doError("WebSocket connection unexpectedly closed");
           };
+
+          // Create timeout API for strategy
+          timeoutStrategy?.attach({
+            send,
+            abort: doAbort,
+            request,
+            subscriptionId,
+          });
         },
         // when failed to generate payload, notify caller
         (error) => {

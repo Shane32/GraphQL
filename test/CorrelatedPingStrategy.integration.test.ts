@@ -18,6 +18,12 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    jest.useRealTimers();
+    jest.clearAllTimers();
+    // Reset mock WebSocket state
+    if (mockWebSocket) {
+      mockWebSocket = null!;
+    }
   });
 
   it("should timeout subscription when connection acknowledgment is not received", async () => {
@@ -106,11 +112,16 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       ],
     );
 
-    // Expect ping but don't respond with pong
-    mockWebSocket.expect(
-      { type: "ping", payload: { id: expect.any(String) } },
-      [], // No pong response - should trigger pong timeout
-    );
+    // Expect ping but don't respond with pong - should trigger timeout
+    mockWebSocket.expectFunction((actual) => {
+      try {
+        const msg = JSON.parse(actual);
+        if (msg && msg.type === "ping" && msg.payload && typeof msg.payload.id === "string") {
+          return []; // No pong response - should trigger pong timeout
+        }
+      } catch {}
+      return null;
+    });
 
     const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
       {
@@ -173,8 +184,24 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       ],
     );
 
-    // Allow unexpected pings to be ignored to avoid race conditions
-    mockWebSocket.allowUnexpected = true;
+    // Set up expectations for multiple pings that might occur and respond with pongs
+    for (let i = 0; i < 5; i++) {
+      mockWebSocket.expectFunction((actual) => {
+        try {
+          const msg = JSON.parse(actual);
+          if (msg && msg.type === "ping" && msg.payload && typeof msg.payload.id === "string") {
+            return [
+              {
+                kind: "message",
+                data: { type: "pong", payload: { id: msg.payload.id } },
+                delayMs: 10,
+              },
+            ];
+          }
+        } catch {}
+        return null;
+      });
+    }
 
     const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
       {
@@ -464,7 +491,6 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
     let dataCount = 0;
     let receivedClose = false;
     let closeReason: CloseReason | undefined;
-    let pingCount = 0;
 
     // Set up mock WebSocket expectations
     mockWebSocket.expect({ type: "connection_init", payload: undefined }, [{ kind: "message", data: { type: "connection_ack" } }]);
@@ -489,15 +515,23 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       ],
     );
 
-    // Expect multiple pings and respond to each
-    for (let i = 0; i < 3; i++) {
-      mockWebSocket.expect({ type: "ping", payload: { id: expect.any(String) } }, [
-        {
-          kind: "message",
-          data: { type: "pong", payload: { id: expect.any(String) } },
-          delayMs: 20, // Quick response
-        },
-      ]);
+    // Expect multiple pings and respond to each with matching pong
+    for (let i = 0; i < 5; i++) {
+      mockWebSocket.expectFunction((actual) => {
+        try {
+          const msg = JSON.parse(actual);
+          if (msg && msg.type === "ping" && msg.payload && typeof msg.payload.id === "string") {
+            return [
+              {
+                kind: "message",
+                data: { type: "pong", payload: { id: msg.payload.id } },
+                delayMs: 20,
+              },
+            ];
+          }
+        } catch {}
+        return null;
+      });
     }
 
     const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
@@ -539,7 +573,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
     // Wait for multiple data messages
     await waitFor(
       () => {
-        expect(dataCount).toBeGreaterThanOrEqual(2); // Reduce expectation to be more realistic
+        expect(dataCount).toBeGreaterThanOrEqual(2);
       },
       { timeout: 1000 },
     );
