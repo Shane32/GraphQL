@@ -1,5 +1,8 @@
 import { waitFor } from "@testing-library/react";
 import GraphQLClient from "../src/GraphQLClient";
+import IdleTimeoutStrategy from "../src/IdleTimeoutStrategy";
+import CloseReason from "../src/CloseReason";
+import { MockWebSocket } from "../test-utils/MockWebSocket";
 
 interface IMockFetch {
   request: Request;
@@ -7,6 +10,7 @@ interface IMockFetch {
   reject: (reason?: any) => void;
 }
 let requests: IMockFetch[] = [];
+let mockWebSocket: MockWebSocket;
 
 beforeEach(() => {
   jest.spyOn(global, "fetch").mockImplementation((request, init) => {
@@ -17,6 +21,13 @@ beforeEach(() => {
         reject: reject,
       });
     });
+  });
+
+  // Mock WebSocket constructor
+  mockWebSocket = new MockWebSocket();
+  (global as any).WebSocket = jest.fn().mockImplementation((url: string, protocol?: string) => {
+    mockWebSocket.initialize(url, protocol);
+    return mockWebSocket;
   });
 });
 
@@ -185,34 +196,59 @@ test("executeQuery", async () => {
   expect(result.data!.v1.info.version).toEqual("12345");
 });
 
-/* This test works locally, but may not reliable in CI due to slow startup of the GraphQL API
-test('executeSubscription', async () => {
-    const client = new GraphQLClient({
-        url: '',
-        webSocketUrl: 'wss://beta.pokeapi.co/graphql/v1beta',
-    });
-    let receivedData = false;
-    let receivedClose = false;
-    const ret = client.ExecuteSubscription<{ pokemon_v2_version: Array<{ name: string }> }>(
-        {
-            query: 'subscription { pokemon_v2_version { name } }',
-        },
-        data => {
-            console.log('data received: ' + JSON.stringify(data));
-            if (data && data.data && data.data.pokemon_v2_version)
-                receivedData = true;
-        },
-        () => {
-            receivedClose = true;
-        }
-    );
-    await ret.connected;
+test("executeSubscription", async () => {
+  const client = new GraphQLClient({
+    url: "", // unused
+    webSocketUrl: "ws://test/graphql",
+  });
 
-    waitFor(() => {
-        expect(receivedData).toBeTruthy();
-        expect(receivedClose).toBeTruthy();
-    })
+  let receivedData = false;
+  let receivedClose = false;
+  let closeReason: CloseReason | undefined;
 
-    ret.abort();
-})
-*/
+  // Set up mock WebSocket expectations
+  mockWebSocket.expect({ type: "connection_init", payload: undefined }, [{ kind: "message", data: { type: "connection_ack" } }]);
+
+  mockWebSocket.expect(
+    {
+      id: "1",
+      type: "subscribe",
+      payload: { query: "subscription { pokemon_v2_version { name } }" },
+    },
+    [
+      {
+        kind: "message",
+        data: {
+          type: "next",
+          id: "1",
+          payload: {
+            data: { pokemon_v2_version: [{ name: "red" }, { name: "blue" }] },
+          },
+        },
+      },
+      { kind: "message", data: { type: "complete", id: "1" } },
+    ],
+  );
+
+  const ret = client.ExecuteSubscription<{ pokemon_v2_version: Array<{ name: string }> }>(
+    {
+      query: "subscription { pokemon_v2_version { name } }",
+    },
+    (data) => {
+      console.log("data received: " + JSON.stringify(data));
+      if (data && data.data && data.data.pokemon_v2_version) receivedData = true;
+    },
+    (reason) => {
+      receivedClose = true;
+      closeReason = reason;
+    },
+  );
+
+  await ret.connected;
+
+  await waitFor(() => {
+    expect(receivedData).toBeTruthy();
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Server);
+  });
+});

@@ -6,6 +6,9 @@ import IQueryResult from "./IQueryResult";
 import IRequest from "./IRequest";
 import IWebSocketMessage from "./IWebSocketMessage";
 import CloseReason from "./CloseReason";
+import ITimeoutStrategy from "./ITimeoutStrategy";
+import ITimeoutApi from "./ITimeoutApi";
+import ClientMsg from "./ClientMsg";
 
 interface ICacheEntry {
   queryAndVariablesString: string;
@@ -36,6 +39,7 @@ export default class GraphQLClient implements IGraphQLClient {
   private sendDocumentIdAsQuery?: boolean;
   private logHttpError?: (request: IRequest, response: Response) => void;
   private logWebSocketConnectionError?: (request: IGraphQLRequest<any>, connectionMessage: any, receivedMessage: any) => void;
+  private defaultSubscriptionOptions?: { timeoutStrategy?: ITimeoutStrategy };
 
   public constructor(configuration: IGraphQLConfiguration) {
     this.url = configuration.url;
@@ -56,6 +60,7 @@ export default class GraphQLClient implements IGraphQLClient {
     this.sendDocumentIdAsQuery = configuration.sendDocumentIdAsQuery;
     this.logHttpError = configuration.logHttpError;
     this.logWebSocketConnectionError = configuration.logWebSocketConnectionError;
+    this.defaultSubscriptionOptions = configuration.defaultSubscriptionOptions;
   }
 
   public GetPendingRequests = () => this.pendingRequests;
@@ -327,9 +332,14 @@ export default class GraphQLClient implements IGraphQLClient {
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
     onClose: (reason: CloseReason) => void,
+    options?: { timeoutStrategy?: ITimeoutStrategy },
   ) => {
     this.activeSubscriptions += 1;
     const subscriptionId = "1";
+
+    // Determine timeout strategy to use
+    const timeoutStrategy = options?.timeoutStrategy || this.defaultSubscriptionOptions?.timeoutStrategy;
+
     // set up abort
     let aborted = false;
     let closeReason: CloseReason = undefined!; // always set by doAbort before used by abortPromise
@@ -344,6 +354,7 @@ export default class GraphQLClient implements IGraphQLClient {
     abortPromise.then(() => {
       this.activeSubscriptions -= 1;
       aborted = true;
+      timeoutStrategy?.onClose?.(closeReason);
       onClose(closeReason);
     });
     // set up data push
@@ -394,6 +405,27 @@ export default class GraphQLClient implements IGraphQLClient {
           if (aborted) return;
           // connect to the websocket endpoint
           const webSocket = new WebSocket(this.webSocketUrl, "graphql-transport-ws");
+
+          // Create safe send function for timeout strategy
+          const safeSend = (msg: ClientMsg) => {
+            if (!aborted && webSocket.readyState === WebSocket.OPEN) {
+              webSocket.send(JSON.stringify(msg));
+              timeoutStrategy?.onOutbound?.(msg);
+            }
+          };
+
+          // Create timeout API for strategy
+          let timeoutApi: ITimeoutApi<TVariables> | undefined;
+          if (timeoutStrategy) {
+            timeoutApi = {
+              send: safeSend,
+              abort: doAbort,
+              request: request,
+              subscriptionId: subscriptionId,
+            };
+            timeoutStrategy.attach(timeoutApi);
+          }
+
           // set up abort/close
           abortPromise.then(() => {
             webSocket.close();
@@ -403,11 +435,13 @@ export default class GraphQLClient implements IGraphQLClient {
           // when connection is opened, send connection init message
           webSocket.onopen = () => {
             if (aborted) return;
+            timeoutStrategy?.onOpen?.();
             const message = {
               type: "connection_init",
               payload: payload,
             };
             webSocket.send(JSON.stringify(message));
+            timeoutStrategy?.onOutbound?.(message);
           };
           // when message received, process it
           webSocket.onmessage = (ev) => {
@@ -427,9 +461,16 @@ export default class GraphQLClient implements IGraphQLClient {
               return;
             }
 
+            // Let timeout strategy observe the message first
+            if (timeoutStrategy?.onInbound?.(message) === false) {
+              return; // Strategy consumed the message
+            }
+
             // process message based on state machine
             if (message.type === "ping") {
-              webSocket.send(JSON.stringify({ type: "pong", payload: message.payload }));
+              const pongMsg = { type: "pong", payload: message.payload };
+              webSocket.send(JSON.stringify(pongMsg));
+              timeoutStrategy?.onOutbound?.(pongMsg);
             } else if (state === "opening") {
               if (message.type !== "connection_ack") {
                 // Log WebSocket connection error if the callback is defined
@@ -447,13 +488,14 @@ export default class GraphQLClient implements IGraphQLClient {
                   connectionResolved = true;
                   resolveConnection();
                 }
-                webSocket.send(
-                  JSON.stringify({
-                    id: subscriptionId,
-                    type: "subscribe",
-                    payload: request,
-                  }),
-                );
+                timeoutStrategy?.onAck?.();
+                const subscribeMsg = {
+                  id: subscriptionId,
+                  type: "subscribe",
+                  payload: request,
+                };
+                webSocket.send(JSON.stringify(subscribeMsg));
+                timeoutStrategy?.onOutbound?.(subscribeMsg);
               }
             } else if (state === "connected") {
               if (message.type === "next") {

@@ -1,5 +1,6 @@
 import IRequest from "./IRequest";
 import IGraphQLRequest from "./IGraphQLRequest";
+import ITimeoutStrategy from "./ITimeoutStrategy";
 
 /**
  * Represents configuration options for making GraphQL requests.
@@ -72,6 +73,14 @@ interface IGraphQLConfiguration {
    * @param receivedMessage The unexpected message that was received, if available.
    */
   logWebSocketConnectionError?: (request: IGraphQLRequest<any>, connectionMessage: any, receivedMessage: any) => void;
+
+  /**
+   * Default options for subscriptions.
+   */
+  defaultSubscriptionOptions?: {
+    /** The timeout strategy to use for managing subscription timeouts and heartbeats. */
+    timeoutStrategy?: ITimeoutStrategy;
+  };
 }
 
 export default IGraphQLConfiguration;
