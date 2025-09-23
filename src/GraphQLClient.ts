@@ -406,6 +406,11 @@ export default class GraphQLClient implements IGraphQLClient {
           // connect to the websocket endpoint
           const webSocket = new WebSocket(this.webSocketUrl, "graphql-transport-ws");
 
+          // set up abort/close
+          abortPromise.then(() => {
+            webSocket.close();
+          });
+
           // Create safe send function for timeout strategy
           const safeSend = (msg: ClientMsg) => {
             if (!aborted && webSocket.readyState === WebSocket.OPEN) {
@@ -415,21 +420,13 @@ export default class GraphQLClient implements IGraphQLClient {
           };
 
           // Create timeout API for strategy
-          let timeoutApi: ITimeoutApi<TVariables> | undefined;
-          if (timeoutStrategy) {
-            timeoutApi = {
-              send: safeSend,
-              abort: doAbort,
-              request: request,
-              subscriptionId: subscriptionId,
-            };
-            timeoutStrategy.attach(timeoutApi);
-          }
-
-          // set up abort/close
-          abortPromise.then(() => {
-            webSocket.close();
+          timeoutStrategy?.attach({
+            send: safeSend,
+            abort: doAbort,
+            request,
+            subscriptionId,
           });
+
           // set up state machine
           let state: "opening" | "connected" = "opening";
           // when connection is opened, send connection init message
@@ -443,6 +440,7 @@ export default class GraphQLClient implements IGraphQLClient {
             webSocket.send(JSON.stringify(message));
             timeoutStrategy?.onOutbound?.(message);
           };
+
           // when message received, process it
           webSocket.onmessage = (ev) => {
             // parse the incoming message
@@ -533,6 +531,7 @@ export default class GraphQLClient implements IGraphQLClient {
               }
             }
           };
+
           // when websocket closed, notify caller (only raises error if not closed from this end)
           webSocket.onclose = (ev: CloseEvent) => {
             // Log WebSocket connection error if the callback is defined
