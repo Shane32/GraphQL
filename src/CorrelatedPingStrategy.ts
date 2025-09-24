@@ -86,11 +86,30 @@ class CorrelatedPingConnectionHandler implements ITimeoutConnectionHandler {
  * matching pongs within a deadline. Aborts if pong is not received in time.
  */
 export default class CorrelatedPingStrategy implements ITimeoutStrategy {
-  constructor(
-    private ackTimeoutMs: number,
-    private pingIntervalMs: number,
-    private pongDeadlineMs: number,
-  ) {}
+  private static cache = new Map<string, CorrelatedPingStrategy>();
+
+  constructor(ackTimeoutMs: number, pingIntervalMs: number, pongDeadlineMs: number) {
+    // Initialize the instance
+    this.ackTimeoutMs = ackTimeoutMs;
+    this.pingIntervalMs = pingIntervalMs;
+    this.pongDeadlineMs = pongDeadlineMs;
+
+    // Create a composite key from all three parameters
+    const cacheKey = `${ackTimeoutMs}:${pingIntervalMs}:${pongDeadlineMs}`;
+
+    // Check if we already have a cached instance for this combination
+    const cached = CorrelatedPingStrategy.cache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    // Cache this instance
+    CorrelatedPingStrategy.cache.set(cacheKey, this);
+  }
+
+  private ackTimeoutMs: number;
+  private pingIntervalMs: number;
+  private pongDeadlineMs: number;
 
   attach(api: ITimeoutApi): ITimeoutConnectionHandler {
     return new CorrelatedPingConnectionHandler(api, this.ackTimeoutMs, this.pingIntervalMs, this.pongDeadlineMs);
