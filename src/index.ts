@@ -8,7 +8,6 @@ export { default as useQuery } from "./useQuery";
 export { default as useMutation } from "./useMutation";
 export { default as useSubscription } from "./useSubscription";
 export { default as useAutoSubscription, AutoSubscriptionState } from "./useAutoSubscription";
-export type { IUseAutoSubscriptionOptions, IUseAutoSubscriptionResult } from "./useAutoSubscription";
 export { default as gql } from "./GraphQLTag";
 export { default as createRequest } from "./createRequest";
 export { default as CloseReason } from "./CloseReason";

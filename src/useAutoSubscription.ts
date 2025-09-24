@@ -31,7 +31,10 @@ export interface IUseAutoSubscriptionOptions<TResult, TVariables> extends ISubsc
   guest?: boolean;
   /** The client to use for the subscription, or the name of the client. */
   client?: GraphQLClient | string;
-  /** The variables to use for the subscription, or a function that returns the variables. */
+  /**
+   * The variables to use for the subscription, or a function that returns the variables.
+   * Variables are evaluated each time the subscription is (re)connected.
+   **/
   variables?: TVariables | (() => TVariables);
   /** The name of the operation to use for the subscription. */
   operationName?: string;
@@ -63,27 +66,6 @@ export interface IUseAutoSubscriptionResult {
  * @param {string | TypedDocumentString<TResult, TVariables>} query The GraphQL subscription string or typed document.
  * @param {IUseAutoSubscriptionOptions<TResult, TVariables>} [options] The options for the auto-subscription.
  * @returns {IUseAutoSubscriptionResult} An object containing the current state of the subscription.
- *
- * @example
- * ```tsx
- * const { state } = useAutoSubscription(
- *   MY_SUBSCRIPTION,
- *   {
- *     variables: () => ({ id: userId }),
- *     enabled: isLoggedIn,
- *     onData: (data) => {
- *       console.log('Received data:', data);
- *     },
- *     onClose: (reason) => {
- *       console.log('Subscription closed:', reason);
- *     }
- *   }
- * );
- *
- * if (state === AutoSubscriptionState.Connected) {
- *   // Subscription is active
- * }
- * ```
  */
 const useAutoSubscription = <TResult, TVariables = unknown>(
   query: string | TypedDocumentString<TResult, TVariables>,
