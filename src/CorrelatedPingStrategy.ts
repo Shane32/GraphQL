@@ -1,27 +1,23 @@
 import ITimeoutStrategy from "./ITimeoutStrategy";
+import ITimeoutConnectionHandler from "./ITimeoutConnectionHandler";
 import ITimeoutApi from "./ITimeoutApi";
 import IWebSocketMessage from "./IWebSocketMessage";
 import CloseReason from "./CloseReason";
 
 /**
- * Correlated ping/pong timeout strategy that sends periodic pings and expects
- * matching pongs within a deadline. Aborts if pong is not received in time.
+ * Connection handler for CorrelatedPingStrategy that manages ping/pong state for a single connection.
  */
-export default class CorrelatedPingStrategy implements ITimeoutStrategy {
-  private api!: ITimeoutApi;
+class CorrelatedPingConnectionHandler implements ITimeoutConnectionHandler {
   private intervalId: number | null = null;
   private deadlineId: number | null = null;
   private inFlight: string | null = null;
 
   constructor(
+    private api: ITimeoutApi,
     private ackTimeoutMs: number,
     private pingIntervalMs: number,
     private pongDeadlineMs: number,
   ) {}
-
-  attach(api: ITimeoutApi): void {
-    this.api = api;
-  }
 
   onOpen?(): void {
     // Start connection acknowledgment timeout
@@ -82,5 +78,21 @@ export default class CorrelatedPingStrategy implements ITimeoutStrategy {
       window.clearTimeout(this.deadlineId);
       this.deadlineId = null;
     }
+  }
+}
+
+/**
+ * Correlated ping/pong timeout strategy that sends periodic pings and expects
+ * matching pongs within a deadline. Aborts if pong is not received in time.
+ */
+export default class CorrelatedPingStrategy implements ITimeoutStrategy {
+  constructor(
+    private ackTimeoutMs: number,
+    private pingIntervalMs: number,
+    private pongDeadlineMs: number,
+  ) {}
+
+  attach(api: ITimeoutApi): ITimeoutConnectionHandler {
+    return new CorrelatedPingConnectionHandler(api, this.ackTimeoutMs, this.pingIntervalMs, this.pongDeadlineMs);
   }
 }

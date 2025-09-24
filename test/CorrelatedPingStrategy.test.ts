@@ -1,10 +1,12 @@
 import CorrelatedPingStrategy from "../src/CorrelatedPingStrategy";
 import ITimeoutApi from "../src/ITimeoutApi";
+import ITimeoutConnectionHandler from "../src/ITimeoutConnectionHandler";
 import CloseReason from "../src/CloseReason";
 import IWebSocketMessage from "../src/IWebSocketMessage";
 
 describe("CorrelatedPingStrategy", () => {
   let strategy: CorrelatedPingStrategy;
+  let handler: ITimeoutConnectionHandler;
   let mockApi: jest.Mocked<ITimeoutApi>;
   let mockSetTimeout: jest.SpyInstance;
   let mockClearTimeout: jest.SpyInstance;
@@ -36,8 +38,9 @@ describe("CorrelatedPingStrategy", () => {
   });
 
   describe("attach", () => {
-    it("should store the API reference", () => {
-      strategy.attach(mockApi);
+    it("should return a connection handler", () => {
+      handler = strategy.attach(mockApi);
+      expect(handler).toBeDefined();
       // No immediate side effects expected
       expect(mockSetTimeout).not.toHaveBeenCalled();
       expect(mockSetInterval).not.toHaveBeenCalled();
@@ -47,7 +50,7 @@ describe("CorrelatedPingStrategy", () => {
   describe("connection acknowledgment timeout", () => {
     beforeEach(() => {
       jest.useFakeTimers();
-      strategy.attach(mockApi);
+      handler = strategy.attach(mockApi);
     });
 
     afterEach(() => {
@@ -55,7 +58,7 @@ describe("CorrelatedPingStrategy", () => {
     });
 
     it("should start ack timeout on onOpen", () => {
-      strategy.onOpen?.();
+      handler.onOpen?.();
 
       // With fake timers, we can't spy on the calls, but we can verify the behavior
       // The timeout should be set and should fire after 3000ms
@@ -67,7 +70,7 @@ describe("CorrelatedPingStrategy", () => {
     });
 
     it("should abort if ack timeout expires", () => {
-      strategy.onOpen?.();
+      handler.onOpen?.();
 
       jest.advanceTimersByTime(3000);
 
@@ -75,14 +78,14 @@ describe("CorrelatedPingStrategy", () => {
     });
 
     it("should not abort if ack is received in time", () => {
-      strategy.onOpen?.();
+      handler.onOpen?.();
 
       // Advance time but not enough to trigger timeout
       jest.advanceTimersByTime(2999);
       expect(mockApi.abort).not.toHaveBeenCalled();
 
       // Receive ack
-      strategy.onAck?.();
+      handler.onAck?.();
 
       // Complete the original timeout period
       jest.advanceTimersByTime(1);
@@ -93,9 +96,9 @@ describe("CorrelatedPingStrategy", () => {
   describe("ping/pong mechanism", () => {
     beforeEach(() => {
       jest.useFakeTimers();
-      strategy.attach(mockApi);
-      strategy.onOpen?.();
-      strategy.onAck?.(); // This starts the ping interval
+      handler = strategy.attach(mockApi);
+      handler.onOpen?.();
+      handler.onAck?.(); // This starts the ping interval
     });
 
     afterEach(() => {
@@ -162,7 +165,7 @@ describe("CorrelatedPingStrategy", () => {
         payload: { id: pingId },
       };
 
-      const result = strategy.onInbound?.(pongMessage);
+      const result = handler.onInbound?.(pongMessage);
       expect(result).toBe(false); // Should consume the message
 
       // Should not abort on pong deadline
@@ -188,7 +191,7 @@ describe("CorrelatedPingStrategy", () => {
         payload: { id: "wrong-id" },
       };
 
-      const result = strategy.onInbound?.(pongMessage);
+      const result = handler.onInbound?.(pongMessage);
       expect(result).toBeUndefined(); // Should not consume the message
 
       // Should still abort on pong deadline
@@ -203,7 +206,7 @@ describe("CorrelatedPingStrategy", () => {
         payload: { data: { test: "data" } },
       };
 
-      const result = strategy.onInbound?.(nextMessage);
+      const result = handler.onInbound?.(nextMessage);
       expect(result).toBeUndefined(); // Should not consume the message
     });
 
@@ -222,9 +225,9 @@ describe("CorrelatedPingStrategy", () => {
   describe("cleanup on close", () => {
     beforeEach(() => {
       jest.useFakeTimers();
-      strategy.attach(mockApi);
-      strategy.onOpen?.();
-      strategy.onAck?.();
+      handler = strategy.attach(mockApi);
+      handler.onOpen?.();
+      handler.onAck?.();
     });
 
     afterEach(() => {
@@ -236,7 +239,7 @@ describe("CorrelatedPingStrategy", () => {
       jest.advanceTimersByTime(5000);
 
       // Close
-      strategy.onClose?.(CloseReason.Client);
+      handler.onClose?.(CloseReason.Client);
 
       // Verify timers are stopped by checking that no more actions happen
       mockApi.abort.mockClear();
@@ -253,9 +256,9 @@ describe("CorrelatedPingStrategy", () => {
     it("should handle zero timeouts", () => {
       jest.useFakeTimers();
       const zeroTimeoutStrategy = new CorrelatedPingStrategy(0, 0, 0);
-      zeroTimeoutStrategy.attach(mockApi);
+      const zeroHandler = zeroTimeoutStrategy.attach(mockApi);
 
-      zeroTimeoutStrategy.onOpen?.();
+      zeroHandler.onOpen?.();
       jest.advanceTimersByTime(0);
       expect(mockApi.abort).toHaveBeenCalledWith(CloseReason.Timeout);
 
@@ -265,10 +268,10 @@ describe("CorrelatedPingStrategy", () => {
     it("should handle very large timeouts", () => {
       jest.useFakeTimers();
       const largeTimeoutStrategy = new CorrelatedPingStrategy(1000000, 1000000, 1000000);
-      largeTimeoutStrategy.attach(mockApi);
+      const largeHandler = largeTimeoutStrategy.attach(mockApi);
 
-      largeTimeoutStrategy.onOpen?.();
-      largeTimeoutStrategy.onAck?.();
+      largeHandler.onOpen?.();
+      largeHandler.onAck?.();
 
       jest.advanceTimersByTime(999999);
       expect(mockApi.abort).not.toHaveBeenCalled();
@@ -277,26 +280,26 @@ describe("CorrelatedPingStrategy", () => {
     });
 
     it("should not crash if onInbound is called with null message", () => {
-      strategy.attach(mockApi);
-      // This will crash because the strategy tries to access msg.type
-      expect(() => strategy.onInbound?.(null as any)).toThrow();
+      const testHandler = strategy.attach(mockApi);
+      // This will crash because the handler tries to access msg.type
+      expect(() => testHandler.onInbound?.(null as any)).toThrow();
     });
 
-    it("should not crash if methods are called before attach", () => {
+    it("should not crash if methods are called on handler", () => {
       const unattachedStrategy = new CorrelatedPingStrategy(3000, 5000, 2000);
-      // Actually, looking at the implementation, onOpen doesn't immediately crash
-      // It sets a timeout, but the timeout callback will crash when it tries to call this.api.abort
-      expect(() => unattachedStrategy.onOpen?.()).not.toThrow();
-      expect(() => unattachedStrategy.onAck?.()).not.toThrow();
-      expect(() => unattachedStrategy.onInbound?.({ type: "ping" })).not.toThrow();
-      expect(() => unattachedStrategy.onClose?.(CloseReason.Client)).not.toThrow();
+      const testHandler = unattachedStrategy.attach(mockApi);
+      // Handler methods should work normally since they have the API reference
+      expect(() => testHandler.onOpen?.()).not.toThrow();
+      expect(() => testHandler.onAck?.()).not.toThrow();
+      expect(() => testHandler.onInbound?.({ type: "ping" })).not.toThrow();
+      expect(() => testHandler.onClose?.(CloseReason.Client)).not.toThrow();
     });
 
     it("should handle pong without payload", () => {
       jest.useFakeTimers();
-      strategy.attach(mockApi);
-      strategy.onOpen?.();
-      strategy.onAck?.();
+      const testHandler = strategy.attach(mockApi);
+      testHandler.onOpen?.();
+      testHandler.onAck?.();
 
       // Send ping
       jest.advanceTimersByTime(5000);
@@ -306,7 +309,7 @@ describe("CorrelatedPingStrategy", () => {
         type: "pong",
       };
 
-      const result = strategy.onInbound?.(pongMessage);
+      const result = testHandler.onInbound?.(pongMessage);
       expect(result).toBeUndefined(); // Should not consume the message
 
       jest.useRealTimers();
@@ -314,20 +317,20 @@ describe("CorrelatedPingStrategy", () => {
 
     it("should handle multiple start/stop cycles", () => {
       jest.useFakeTimers();
-      strategy.attach(mockApi);
+      const testHandler = strategy.attach(mockApi);
 
       // Start and stop multiple times
-      strategy.onOpen?.();
-      strategy.onAck?.();
-      strategy.onClose?.(CloseReason.Client);
+      testHandler.onOpen?.();
+      testHandler.onAck?.();
+      testHandler.onClose?.(CloseReason.Client);
 
-      strategy.onOpen?.();
-      strategy.onAck?.();
-      strategy.onClose?.(CloseReason.Server);
+      testHandler.onOpen?.();
+      testHandler.onAck?.();
+      testHandler.onClose?.(CloseReason.Server);
 
       // Should not crash and should work normally
-      strategy.onOpen?.();
-      strategy.onAck?.();
+      testHandler.onOpen?.();
+      testHandler.onAck?.();
 
       jest.advanceTimersByTime(5000);
       expect(mockApi.send).toHaveBeenCalledWith({

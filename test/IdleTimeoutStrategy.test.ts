@@ -1,10 +1,12 @@
 import IdleTimeoutStrategy from "../src/IdleTimeoutStrategy";
 import ITimeoutApi from "../src/ITimeoutApi";
+import ITimeoutConnectionHandler from "../src/ITimeoutConnectionHandler";
 import CloseReason from "../src/CloseReason";
 import IWebSocketMessage from "../src/IWebSocketMessage";
 
 describe("IdleTimeoutStrategy", () => {
   let strategy: IdleTimeoutStrategy;
+  let handler: ITimeoutConnectionHandler;
   let mockApi: jest.Mocked<ITimeoutApi>;
   let mockSetTimeout: jest.SpyInstance;
   let mockClearTimeout: jest.SpyInstance;
@@ -31,9 +33,10 @@ describe("IdleTimeoutStrategy", () => {
   });
 
   describe("attach", () => {
-    it("should store the API reference and arm the timeout", () => {
-      strategy.attach(mockApi);
+    it("should return a connection handler and arm the timeout", () => {
+      handler = strategy.attach(mockApi);
 
+      expect(handler).toBeDefined();
       expect(mockSetTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
     });
   });
@@ -41,7 +44,7 @@ describe("IdleTimeoutStrategy", () => {
   describe("timeout behavior", () => {
     beforeEach(() => {
       jest.useFakeTimers();
-      strategy.attach(mockApi);
+      handler = strategy.attach(mockApi);
     });
 
     afterEach(() => {
@@ -67,7 +70,7 @@ describe("IdleTimeoutStrategy", () => {
       jest.advanceTimersByTime(3000);
 
       // Call onOpen to reset timeout
-      strategy.onOpen?.();
+      handler.onOpen?.();
 
       // Fast-forward by less than the full timeout - should not abort yet
       jest.advanceTimersByTime(4999);
@@ -83,7 +86,7 @@ describe("IdleTimeoutStrategy", () => {
       jest.advanceTimersByTime(3000);
 
       // Call onAck to reset timeout
-      strategy.onAck?.();
+      handler.onAck?.();
 
       // Fast-forward by less than the full timeout - should not abort yet
       jest.advanceTimersByTime(4999);
@@ -105,7 +108,7 @@ describe("IdleTimeoutStrategy", () => {
       jest.advanceTimersByTime(3000);
 
       // Call onInbound to reset timeout
-      strategy.onInbound?.(message);
+      handler.onInbound?.(message);
 
       // Fast-forward by less than the full timeout - should not abort yet
       jest.advanceTimersByTime(4999);
@@ -118,7 +121,7 @@ describe("IdleTimeoutStrategy", () => {
 
     it("should clear timeout on close", () => {
       // Call onClose
-      strategy.onClose?.(CloseReason.Client);
+      handler.onClose?.(CloseReason.Client);
 
       // Fast-forward time - should not abort since timeout was cleared
       jest.advanceTimersByTime(10000);
@@ -127,9 +130,9 @@ describe("IdleTimeoutStrategy", () => {
 
     it("should handle multiple arm/disarm cycles correctly", () => {
       // Reset timeout multiple times
-      strategy.onOpen?.();
-      strategy.onAck?.();
-      strategy.onInbound?.({ type: "ping" });
+      handler.onOpen?.();
+      handler.onAck?.();
+      handler.onInbound?.({ type: "ping" });
 
       // Should still timeout after the last reset
       jest.advanceTimersByTime(5000);
@@ -163,17 +166,18 @@ describe("IdleTimeoutStrategy", () => {
     });
 
     it("should not crash if onInbound is called with null message", () => {
-      strategy.attach(mockApi);
-      // The strategy doesn't actually check the message content, just calls arm()
-      expect(() => strategy.onInbound?.(null as any)).not.toThrow();
+      const testHandler = strategy.attach(mockApi);
+      // The handler doesn't actually check the message content, just calls arm()
+      expect(() => testHandler.onInbound?.(null as any)).not.toThrow();
     });
 
-    it("should not crash if methods are called before attach", () => {
+    it("should not crash if methods are called on handler", () => {
       const unattachedStrategy = new IdleTimeoutStrategy(5000);
-      expect(() => unattachedStrategy.onOpen?.()).not.toThrow();
-      expect(() => unattachedStrategy.onAck?.()).not.toThrow();
-      expect(() => unattachedStrategy.onInbound?.({ type: "ping" })).not.toThrow();
-      expect(() => unattachedStrategy.onClose?.(CloseReason.Client)).not.toThrow();
+      const testHandler = unattachedStrategy.attach(mockApi);
+      expect(() => testHandler.onOpen?.()).not.toThrow();
+      expect(() => testHandler.onAck?.()).not.toThrow();
+      expect(() => testHandler.onInbound?.({ type: "ping" })).not.toThrow();
+      expect(() => testHandler.onClose?.(CloseReason.Client)).not.toThrow();
     });
   });
 });
