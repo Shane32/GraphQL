@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useCallback, useMemo } from "react";
 import GraphQLClient from "./GraphQLClient";
 import IQueryResult from "./IQueryResult";
 import TypedDocumentString from "./TypedDocumentString";
@@ -77,32 +77,48 @@ const useSubscription: IUseSubscription = <TResult, TVariables = unknown>(
   onDataRef.current = options?.onData;
   onCloseRef.current = options?.onClose;
 
+  const serializedQuery = useMemo(
+    () =>
+      JSON.stringify(
+        createRequest(query, {
+          variables: options?.variables,
+          operationName: options?.operationName,
+          extensions: options?.extensions,
+        }),
+      ),
+    [query, options?.variables, options?.operationName, options?.extensions],
+  );
+  const timeoutStrategy = options?.timeoutStrategy;
+
   /**
    * Executes the subscription with the specified options.
    *
    * @param {ISubscriptionFunctionOptions<TResult, TVariables>} [functionOptions] The options for the subscription execution.
    * @returns {{ connected: Promise<void>; abort: () => void }} An object containing a promise that resolves when the subscription is connected and a function to abort the subscription.
    */
-  const executeSubscription = (functionOptions?: ISubscriptionFunctionOptions<TResult, TVariables>) => {
-    const request = createRequest(query, {
-      variables: functionOptions?.variables || options?.variables,
-      operationName: options?.operationName,
-      extensions: options?.extensions,
-    });
+  const executeSubscription = useCallback(
+    (functionOptions?: ISubscriptionFunctionOptions<TResult, TVariables>) => {
+      const request = createRequest(query, {
+        variables: functionOptions?.variables || options?.variables,
+        operationName: options?.operationName,
+        extensions: options?.extensions,
+      });
 
-    // Create combined callbacks that fire both hook-level and function-level callbacks
-    const onData = (data: IQueryResult<TResult>) => {
-      onDataRef.current?.(data);
-      functionOptions?.onData?.(data);
-    };
+      // Create combined callbacks that fire both hook-level and function-level callbacks
+      const onData = (data: IQueryResult<TResult>) => {
+        onDataRef.current?.(data);
+        functionOptions?.onData?.(data);
+      };
 
-    const onClose = (reason: CloseReason) => {
-      onCloseRef.current?.(reason);
-      functionOptions?.onClose?.(reason);
-    };
+      const onClose = (reason: CloseReason) => {
+        onCloseRef.current?.(reason);
+        functionOptions?.onClose?.(reason);
+      };
 
-    return client.ExecuteSubscription<TResult, TVariables>(request, onData, onClose, options);
-  };
+      return client.ExecuteSubscription<TResult, TVariables>(request, onData, onClose, { timeoutStrategy });
+    },
+    [client, serializedQuery, timeoutStrategy],
+  );
 
   return [executeSubscription];
 };

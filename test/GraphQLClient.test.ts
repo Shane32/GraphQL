@@ -1,6 +1,5 @@
 import { waitFor } from "@testing-library/react";
 import GraphQLClient from "../src/GraphQLClient";
-import IdleTimeoutStrategy from "../src/IdleTimeoutStrategy";
 import CloseReason from "../src/CloseReason";
 import { MockWebSocket } from "./MockWebSocket";
 
