@@ -53,7 +53,23 @@ class IdleTimeoutConnectionHandler implements ITimeoutConnectionHandler {
  * are received within the specified timeout period.
  */
 export default class IdleTimeoutStrategy implements ITimeoutStrategy {
-  constructor(private idleMs: number) {}
+  private static cache = new Map<number, IdleTimeoutStrategy>();
+
+  constructor(idleMs: number) {
+    // Initialize the instance
+    this.idleMs = idleMs;
+
+    // Check if we already have a cached instance for this timeout value
+    const cached = IdleTimeoutStrategy.cache.get(idleMs);
+    if (cached) {
+      return cached;
+    }
+
+    // Cache this instance
+    IdleTimeoutStrategy.cache.set(idleMs, this);
+  }
+
+  private idleMs: number;
 
   attach(api: ITimeoutApi): ITimeoutConnectionHandler {
     return new IdleTimeoutConnectionHandler(api, this.idleMs);
