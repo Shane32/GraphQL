@@ -42,6 +42,8 @@ export interface IUseAutoSubscriptionOptions<TResult, TVariables> extends ISubsc
   extensions?: {} | null;
   /** The callback function to invoke when new data is received. */
   onData?: (data: IQueryResult<TResult>) => void;
+  /** The callback function to invoke when the subscription successfully connects. */
+  onOpen?: () => void;
   /** The callback function to invoke when the subscription is closed. */
   onClose?: (reason: CloseReason) => void;
   /** Whether the subscription should be enabled (connected) or disabled (disconnected). Defaults to true. */
@@ -81,6 +83,10 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
   // Store variables or variables function in a ref to always use the latest
   const variablesRef = useRef(options?.variables);
   variablesRef.current = options?.variables;
+
+  // Store onOpen handler in a ref to always use the latest
+  const onOpenRef = useRef(options?.onOpen);
+  onOpenRef.current = options?.onOpen;
 
   // Prepare options for useSubscription (without variables)
   const subscriptionOptions = {
@@ -154,6 +160,8 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
         // Only update state if we're still the active subscription
         if (isConnectingRef.current && abortRef.current === subscription.abort) {
           setState(AutoSubscriptionState.Connected);
+          // Call onOpen handler when successfully connected
+          onOpenRef.current?.();
         }
       })
       .catch((error) => {

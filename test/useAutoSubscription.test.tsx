@@ -151,6 +151,49 @@ describe("useAutoSubscription", () => {
     });
   });
 
+  it("should call onOpen callback when successfully connected", async () => {
+    const onOpen = jest.fn();
+
+    const { result } = renderHook(() => useAutoSubscription("subscription { test }", { onOpen }));
+
+    expect(result.current.state).toBe(AutoSubscriptionState.Connecting);
+    expect(onOpen).not.toHaveBeenCalled();
+
+    act(() => {
+      resolveConnected();
+    });
+
+    await waitFor(() => {
+      expect(result.current.state).toBe(AutoSubscriptionState.Connected);
+    });
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("should use the latest onOpen callback", async () => {
+    const onOpen1 = jest.fn();
+    const onOpen2 = jest.fn();
+
+    const { result, rerender } = renderHook(({ onOpen }) => useAutoSubscription("subscription { test }", { onOpen }), {
+      initialProps: { onOpen: onOpen1 },
+    });
+
+    // Update the onOpen callback before connection completes
+    rerender({ onOpen: onOpen2 });
+
+    act(() => {
+      resolveConnected();
+    });
+
+    await waitFor(() => {
+      expect(result.current.state).toBe(AutoSubscriptionState.Connected);
+    });
+
+    // Should call the latest onOpen callback
+    expect(onOpen1).not.toHaveBeenCalled();
+    expect(onOpen2).toHaveBeenCalledTimes(1);
+  });
+
   it("should call onData callback when data is received", async () => {
     const onData = jest.fn();
     const testData: IQueryResult<any> = {
