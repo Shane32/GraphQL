@@ -9,22 +9,38 @@ import "@testing-library/jest-dom/extend-expect";
 import CloseReason from "../src/CloseReason";
 import { MockWebSocket } from "./MockWebSocket";
 
+let OriginalWebSocket: any;
+
+beforeAll(() => {
+  OriginalWebSocket = globalThis.WebSocket;
+});
+
 let mockWebSocket: MockWebSocket;
 
 beforeEach(() => {
-  // Mock WebSocket constructor
   mockWebSocket = new MockWebSocket();
-  (global as any).WebSocket = jest.fn().mockImplementation((url: string, protocol?: string) => {
+
+  // Replace the constructor for this test
+  (globalThis as any).WebSocket = jest.fn((url: string, protocol?: string) => {
     mockWebSocket.initialize(url, protocol);
-    return mockWebSocket;
+    return mockWebSocket as unknown as WebSocket;
   });
+
+  // (Optional) if your code references WebSocket.OPEN/CLOSED/etc:
+  (globalThis.WebSocket as any).OPEN = 1;
+  (globalThis.WebSocket as any).CLOSED = 3;
+  (globalThis.WebSocket as any).CONNECTING = 0;
+  (globalThis.WebSocket as any).CLOSING = 2;
 });
 
 afterEach(() => {
+  mockWebSocket?.close?.();
   jest.restoreAllMocks();
 });
 
-const StrictMode = (React as any).StrictMode ?? React.Fragment;
+afterAll(() => {
+  (globalThis as any).WebSocket = OriginalWebSocket;
+});
 
 interface TestData {
   pokemon_v2_version: Array<{ name: string }>;
