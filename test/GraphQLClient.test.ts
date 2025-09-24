@@ -2,7 +2,7 @@ import { waitFor } from "@testing-library/react";
 import GraphQLClient from "../src/GraphQLClient";
 import IdleTimeoutStrategy from "../src/IdleTimeoutStrategy";
 import CloseReason from "../src/CloseReason";
-import { MockWebSocket } from "../test-utils/MockWebSocket";
+import { MockWebSocket } from "./MockWebSocket";
 
 interface IMockFetch {
   request: Request;
@@ -235,7 +235,6 @@ test("executeSubscription", async () => {
       query: "subscription { pokemon_v2_version { name } }",
     },
     (data) => {
-      console.log("data received: " + JSON.stringify(data));
       if (data && data.data && data.data.pokemon_v2_version) receivedData = true;
     },
     (reason) => {

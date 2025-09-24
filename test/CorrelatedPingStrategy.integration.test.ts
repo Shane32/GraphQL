@@ -1,13 +1,13 @@
-import { waitFor } from "@testing-library/react";
 import GraphQLClient from "../src/GraphQLClient";
 import CorrelatedPingStrategy from "../src/CorrelatedPingStrategy";
 import CloseReason from "../src/CloseReason";
-import { MockWebSocket } from "../test-utils/MockWebSocket";
+import { MockWebSocket } from "./MockWebSocket";
 
 describe("CorrelatedPingStrategy Integration Tests", () => {
   let mockWebSocket: MockWebSocket;
 
   beforeEach(() => {
+    jest.useFakeTimers();
     // Mock WebSocket constructor
     mockWebSocket = new MockWebSocket();
     (global as any).WebSocket = jest.fn().mockImplementation((url: string, protocol?: string) => {
@@ -17,8 +17,8 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
     jest.useRealTimers();
+    jest.restoreAllMocks();
     jest.clearAllTimers();
     // Reset mock WebSocket state
     if (mockWebSocket) {
@@ -38,7 +38,6 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
     let receivedData = false;
     let receivedClose = false;
     let closeReason: CloseReason | undefined;
-    let connectionRejected = false;
 
     // Set up mock WebSocket expectations - no connection_ack response
     mockWebSocket.expect(
@@ -59,21 +58,26 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       },
     );
 
-    // Try to await connection but expect it to be rejected
-    try {
-      await ret.connected;
-    } catch (error) {
-      connectionRejected = true;
-    }
+    // The connection should be rejected due to timeout
+    let connectSuccess: boolean | undefined = undefined;
+    ret.connected
+      .then(() => {
+        connectSuccess = true;
+      })
+      .catch(() => {
+        connectSuccess = false;
+      });
 
-    await waitFor(
-      () => {
-        expect(receivedData).toBeFalsy();
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Timeout);
-      },
-      { timeout: 1000 },
-    );
+    // Advance time to trigger ack timeout
+    await jest.advanceTimersByTimeAsync(10);
+    await jest.advanceTimersByTimeAsync(100);
+    await jest.advanceTimersByTimeAsync(10);
+
+    expect(receivedData).toBeFalsy();
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Timeout);
+    expect(connectSuccess).toBeDefined();
+    expect(connectSuccess).toBe(false);
   });
 
   it("should send periodic pings and timeout when pong is not received", async () => {
@@ -136,16 +140,16 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
-    await waitFor(
-      () => {
-        expect(receivedData).toBeTruthy();
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Timeout);
-      },
-      { timeout: 1000 },
-    );
+    // Advance time to trigger ping interval and then pong timeout
+    await jest.advanceTimersByTimeAsync(100); // Trigger ping
+    await jest.advanceTimersByTimeAsync(50); // Trigger pong timeout
+
+    expect(receivedData).toBeTruthy();
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Timeout);
   });
 
   it("should handle ping/pong correctly and continue subscription", async () => {
@@ -216,26 +220,24 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
     // Send more data after a short delay
-    setTimeout(() => {
-      mockWebSocket.serverPush({
-        type: "next",
-        id: "1",
-        payload: {
-          data: { liveData: { value: "second" } },
-        },
-      });
-    }, 50);
+    await jest.advanceTimersByTimeAsync(50);
 
-    // Wait for the second data and verify no timeout occurred
-    await waitFor(
-      () => {
-        expect(dataCount).toBe(2);
+    mockWebSocket.serverPush({
+      type: "next",
+      id: "1",
+      payload: {
+        data: { liveData: { value: "second" } },
       },
-      { timeout: 500 },
-    );
+    });
+
+    // Allow time for the message to be processed
+    await jest.advanceTimersByTimeAsync(1);
+
+    expect(dataCount).toBe(2);
 
     // Should still be connected (no timeout)
     expect(receivedClose).toBeFalsy();
@@ -243,13 +245,11 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
     // Manually close to end test
     ret.abort();
 
-    await waitFor(
-      () => {
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Client);
-      },
-      { timeout: 500 },
-    );
+    // Allow time for the abort to be processed
+    await jest.advanceTimersByTimeAsync(1);
+
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Client);
   });
 
   it("should handle server-initiated pings correctly", async () => {
@@ -304,33 +304,26 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
     // Send server-initiated ping
-    setTimeout(() => {
-      mockWebSocket.serverPush({
-        type: "ping",
-        payload: { serverPingId: "server-123" },
-      });
-    }, 50);
+    await jest.advanceTimersByTimeAsync(50);
 
-    // Wait for data and verify pong was sent
-    await waitFor(
-      () => {
-        expect(receivedData).toBeTruthy();
-      },
-      { timeout: 500 },
-    );
+    mockWebSocket.serverPush({
+      type: "ping",
+      payload: { serverPingId: "server-123" },
+    });
+
+    // Allow time for the ping to be processed
+    await jest.advanceTimersByTimeAsync(1);
+
+    expect(receivedData).toBeTruthy();
 
     // Verify pong was sent
-    await waitFor(
-      () => {
-        const sentMessages = (mockWebSocket.send as jest.Mock).mock.calls;
-        const pongMessage = sentMessages.find((call) => call[0].includes('"type":"pong"'));
-        expect(pongMessage).toBeTruthy();
-      },
-      { timeout: 500 },
-    );
+    const sentMessages = (mockWebSocket.send as jest.Mock).mock.calls;
+    const pongMessage = sentMessages.find((call) => call[0].includes('"type":"pong"'));
+    expect(pongMessage).toBeTruthy();
 
     // Should not timeout
     expect(receivedClose).toBeFalsy();
@@ -338,13 +331,11 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
     // Manually close
     ret.abort();
 
-    await waitFor(
-      () => {
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Client);
-      },
-      { timeout: 500 },
-    );
+    // Allow time for the abort to be processed
+    await jest.advanceTimersByTimeAsync(1);
+
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Client);
   });
 
   it("should handle connection with custom payload", async () => {
@@ -404,16 +395,15 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
-    await waitFor(
-      () => {
-        expect(receivedData).toBeTruthy();
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Server);
-      },
-      { timeout: 1000 },
-    );
+    // Advance time to trigger the complete message
+    await jest.advanceTimersByTimeAsync(100);
+
+    expect(receivedData).toBeTruthy();
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Server);
   });
 
   it("should handle subscription errors correctly", async () => {
@@ -465,18 +455,14 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
-    await waitFor(
-      () => {
-        expect(receivedData).toBeTruthy();
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Error);
-        expect(errorData.errors).toBeTruthy();
-        expect(errorData.errors[0].message).toContain("invalidField");
-      },
-      { timeout: 1000 },
-    );
+    expect(receivedData).toBeTruthy();
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Error);
+    expect(errorData.errors).toBeTruthy();
+    expect(errorData.errors[0].message).toContain("invalidField");
   });
 
   it("should handle multiple ping/pong cycles", async () => {
@@ -547,36 +533,30 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
     // Send additional data periodically
-    setTimeout(() => {
-      mockWebSocket.serverPush({
-        type: "next",
-        id: "1",
-        payload: {
-          data: { liveData: { value: "data2" } },
-        },
-      });
-    }, 90);
+    await jest.advanceTimersByTimeAsync(90);
 
-    setTimeout(() => {
-      mockWebSocket.serverPush({
-        type: "next",
-        id: "1",
-        payload: {
-          data: { liveData: { value: "data3" } },
-        },
-      });
-    }, 180);
-
-    // Wait for multiple data messages
-    await waitFor(
-      () => {
-        expect(dataCount).toBeGreaterThanOrEqual(2);
+    mockWebSocket.serverPush({
+      type: "next",
+      id: "1",
+      payload: {
+        data: { liveData: { value: "data2" } },
       },
-      { timeout: 1000 },
-    );
+    });
+
+    await jest.advanceTimersByTimeAsync(90);
+    mockWebSocket.serverPush({
+      type: "next",
+      id: "1",
+      payload: {
+        data: { liveData: { value: "data3" } },
+      },
+    });
+
+    expect(dataCount).toBeGreaterThanOrEqual(2);
 
     // Should still be connected (no timeout despite multiple ping/pong cycles)
     expect(receivedClose).toBeFalsy();
@@ -584,12 +564,10 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
     // Manually close
     ret.abort();
 
-    await waitFor(
-      () => {
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Client);
-      },
-      { timeout: 500 },
-    );
+    // Allow time for the abort to be processed
+    await jest.advanceTimersByTimeAsync(1);
+
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Client);
   });
 });

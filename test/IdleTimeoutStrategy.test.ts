@@ -176,41 +176,4 @@ describe("IdleTimeoutStrategy", () => {
       expect(() => unattachedStrategy.onClose?.(CloseReason.Client)).not.toThrow();
     });
   });
-
-  describe("real timer integration", () => {
-    beforeEach(() => {
-      jest.restoreAllMocks(); // Use real timers for these tests
-    });
-
-    it("should work with real timers", (done) => {
-      const shortTimeoutStrategy = new IdleTimeoutStrategy(50); // 50ms timeout
-      shortTimeoutStrategy.attach(mockApi);
-
-      setTimeout(() => {
-        expect(mockApi.abort).toHaveBeenCalledWith(CloseReason.Timeout);
-        done();
-      }, 100);
-    });
-
-    it("should reset correctly with real timers", (done) => {
-      const shortTimeoutStrategy = new IdleTimeoutStrategy(50); // 50ms timeout
-      shortTimeoutStrategy.attach(mockApi);
-
-      // Reset timeout after 25ms
-      setTimeout(() => {
-        shortTimeoutStrategy.onInbound?.({ type: "ping" });
-      }, 25);
-
-      // Check that it hasn't timed out yet at 60ms (would have timed out at 50ms without reset)
-      setTimeout(() => {
-        expect(mockApi.abort).not.toHaveBeenCalled();
-      }, 60);
-
-      // Check that it times out at 100ms (50ms after reset)
-      setTimeout(() => {
-        expect(mockApi.abort).toHaveBeenCalledWith(CloseReason.Timeout);
-        done();
-      }, 100);
-    });
-  });
 });

@@ -1,13 +1,13 @@
-import { waitFor } from "@testing-library/react";
 import GraphQLClient from "../src/GraphQLClient";
 import IdleTimeoutStrategy from "../src/IdleTimeoutStrategy";
 import CloseReason from "../src/CloseReason";
-import { MockWebSocket } from "../test-utils/MockWebSocket";
+import { MockWebSocket } from "./MockWebSocket";
 
 describe("IdleTimeoutStrategy Integration Tests", () => {
   let mockWebSocket: MockWebSocket;
 
   beforeEach(() => {
+    jest.useFakeTimers();
     // Mock WebSocket constructor
     mockWebSocket = new MockWebSocket();
     (global as any).WebSocket = jest.fn().mockImplementation((url: string, protocol?: string) => {
@@ -17,7 +17,9 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
+    jest.clearAllTimers();
   });
 
   it("should timeout subscription when no messages received within idle period", async () => {
@@ -70,17 +72,15 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(100); // Advance time to trigger idle timeout
     await ret.connected;
 
-    // Wait for timeout to occur
-    await waitFor(
-      () => {
-        expect(receivedData).toBeTruthy();
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Timeout);
-      },
-      { timeout: 1000 },
-    );
+    // Advance time to trigger idle timeout
+    await jest.advanceTimersByTimeAsync(1000);
+
+    expect(receivedData).toBeTruthy();
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Timeout);
   });
 
   it("should reset idle timeout when messages are received", async () => {
@@ -132,28 +132,25 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
     // Wait a bit, then send another message to reset the timeout
-    setTimeout(() => {
-      mockWebSocket.serverPush({
-        type: "next",
-        id: "1",
-        payload: {
-          data: { liveData: { value: "second" } },
-        },
-      });
-    }, 100);
+    await jest.advanceTimersByTimeAsync(100);
+    mockWebSocket.serverPush({
+      type: "next",
+      id: "1",
+      payload: {
+        data: { liveData: { value: "second" } },
+      },
+    });
 
     // Should eventually timeout after the reset
-    await waitFor(
-      () => {
-        expect(dataCount).toBe(2);
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Timeout);
-      },
-      { timeout: 1000 },
-    );
+    await jest.advanceTimersByTimeAsync(150);
+
+    expect(dataCount).toBe(2);
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Timeout);
   });
 
   it("should not timeout when subscription completes normally", async () => {
@@ -210,16 +207,15 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
-    await waitFor(
-      () => {
-        expect(receivedData).toBeTruthy();
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Server); // Should be server close, not timeout
-      },
-      { timeout: 1000 },
-    );
+    // Advance time to trigger the complete message
+    await jest.advanceTimersByTimeAsync(50);
+
+    expect(receivedData).toBeTruthy();
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Server); // Should be server close, not timeout
   });
 
   it("should handle subscription with per-request timeout strategy override", async () => {
@@ -271,16 +267,14 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
     // Should timeout after 50ms (override), not 500ms (default)
-    await waitFor(
-      () => {
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Timeout);
-      },
-      { timeout: 500 },
-    );
+    await jest.advanceTimersByTimeAsync(50);
+
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Timeout);
   });
 
   it("should handle client-initiated abort correctly", async () => {
@@ -332,25 +326,18 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       },
     );
 
+    await jest.advanceTimersByTimeAsync(10);
     await ret.connected;
 
-    // Wait for initial data
-    await waitFor(
-      () => {
-        expect(receivedData).toBeTruthy();
-      },
-      { timeout: 500 },
-    );
+    expect(receivedData).toBeTruthy();
 
     // Manually abort before timeout
     ret.abort();
 
-    await waitFor(
-      () => {
-        expect(receivedClose).toBeTruthy();
-        expect(closeReason).toBe(CloseReason.Client);
-      },
-      { timeout: 500 },
-    );
+    // Allow time for the abort to be processed
+    await jest.advanceTimersByTimeAsync(1);
+
+    expect(receivedClose).toBeTruthy();
+    expect(closeReason).toBe(CloseReason.Client);
   });
 });
