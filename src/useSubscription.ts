@@ -5,7 +5,6 @@ import TypedDocumentString from "./TypedDocumentString";
 import useGraphQLClient from "./useGraphQLClient";
 import createRequest from "./createRequest";
 import ISubscriptionOptions from "./ISubscriptionOptions";
-import combineSubscriptionOptions from "./combineSubscriptionOptions";
 import CloseReason from "./CloseReason";
 
 /**
@@ -20,8 +19,6 @@ interface ISubscriptionFunctionOptions<TResult, TVariables> {
   onData?: (data: IQueryResult<TResult>) => void;
   /** The callback function to invoke when the subscription is closed. */
   onClose?: (reason: CloseReason) => void;
-  /** Optional subscription configuration. */
-  subscriptionOptions?: ISubscriptionOptions;
 }
 
 /**
@@ -29,7 +26,7 @@ interface ISubscriptionFunctionOptions<TResult, TVariables> {
  *
  * @template TVariables The expected variables type of the subscription.
  */
-interface IUseSubscriptionOptions<TResult, TVariables> {
+interface IUseSubscriptionOptions<TResult, TVariables> extends ISubscriptionOptions {
   /** Whether to use the guest client. */
   guest?: boolean;
   /** The client to use for the subscription, or the name of the client. */
@@ -44,8 +41,6 @@ interface IUseSubscriptionOptions<TResult, TVariables> {
   onData?: (data: IQueryResult<TResult>) => void;
   /** The callback function to invoke when the subscription is closed. The latest function reference is always used. */
   onClose?: (reason: CloseReason) => void;
-  /** Optional subscription configuration. */
-  subscriptionOptions?: ISubscriptionOptions;
 }
 
 /**
@@ -85,7 +80,7 @@ const useSubscription: IUseSubscription = <TResult, TVariables = unknown>(
   /**
    * Executes the subscription with the specified options.
    *
-   * @param {ISubscriptionFunctionOptions<TVariables>} [functionOptions] The options for the subscription execution.
+   * @param {ISubscriptionFunctionOptions<TResult, TVariables>} [functionOptions] The options for the subscription execution.
    * @returns {{ connected: Promise<void>; abort: () => void }} An object containing a promise that resolves when the subscription is connected and a function to abort the subscription.
    */
   const executeSubscription = (functionOptions?: ISubscriptionFunctionOptions<TResult, TVariables>) => {
@@ -106,10 +101,7 @@ const useSubscription: IUseSubscription = <TResult, TVariables = unknown>(
       functionOptions?.onClose?.(reason);
     };
 
-    // Combine subscription options from both hook options and function options
-    const subscriptionOptions = combineSubscriptionOptions(options?.subscriptionOptions, functionOptions?.subscriptionOptions);
-
-    return client.ExecuteSubscription<TResult, TVariables>(request, onData, onClose, subscriptionOptions);
+    return client.ExecuteSubscription<TResult, TVariables>(request, onData, onClose, options);
   };
 
   return [executeSubscription];
