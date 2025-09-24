@@ -1,23 +1,19 @@
 import ITimeoutStrategy from "./ITimeoutStrategy";
+import ITimeoutConnectionHandler from "./ITimeoutConnectionHandler";
 import ITimeoutApi from "./ITimeoutApi";
 import IWebSocketMessage from "./IWebSocketMessage";
 import CloseReason from "./CloseReason";
 
 /**
- * Simple idle timeout strategy that aborts the subscription if no inbound messages
- * are received within the specified timeout period.
+ * Connection handler for IdleTimeoutStrategy that manages timeout state for a single connection.
  */
-export default class IdleTimeoutStrategy implements ITimeoutStrategy {
-  private api!: ITimeoutApi;
-  private idleMs: number;
+class IdleTimeoutConnectionHandler implements ITimeoutConnectionHandler {
   private timeoutId: number | null = null;
 
-  constructor(idleMs: number) {
-    this.idleMs = idleMs;
-  }
-
-  attach(api: ITimeoutApi): void {
-    this.api = api;
+  constructor(
+    private api: ITimeoutApi,
+    private idleMs: number,
+  ) {
     this.arm();
   }
 
@@ -49,5 +45,17 @@ export default class IdleTimeoutStrategy implements ITimeoutStrategy {
       window.clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
+  }
+}
+
+/**
+ * Simple idle timeout strategy that aborts the subscription if no inbound messages
+ * are received within the specified timeout period.
+ */
+export default class IdleTimeoutStrategy implements ITimeoutStrategy {
+  constructor(private idleMs: number) {}
+
+  attach(api: ITimeoutApi): ITimeoutConnectionHandler {
+    return new IdleTimeoutConnectionHandler(api, this.idleMs);
   }
 }

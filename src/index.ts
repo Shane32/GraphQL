@@ -12,6 +12,7 @@ export { default as createRequest } from "./createRequest";
 export { default as CloseReason } from "./CloseReason";
 
 export { default as ITimeoutStrategy } from "./ITimeoutStrategy";
+export { default as ITimeoutConnectionHandler } from "./ITimeoutConnectionHandler";
 export { default as ITimeoutApi } from "./ITimeoutApi";
 export { default as ISubscriptionOptions } from "./ISubscriptionOptions";
 export { default as ClientMsg } from "./ClientMsg";
