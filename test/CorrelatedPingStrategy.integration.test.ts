@@ -5,15 +5,26 @@ import { MockWebSocket } from "./MockWebSocket";
 
 describe("CorrelatedPingStrategy Integration Tests", () => {
   let mockWebSocket: MockWebSocket;
+  let originalWebSocket: any;
+
+  beforeAll(() => {
+    originalWebSocket = globalThis.WebSocket;
+  });
 
   beforeEach(() => {
     jest.useFakeTimers();
     // Mock WebSocket constructor
     mockWebSocket = new MockWebSocket();
-    (global as any).WebSocket = jest.fn().mockImplementation((url: string, protocol?: string) => {
+    (globalThis as any).WebSocket = jest.fn().mockImplementation((url: string, protocol?: string) => {
       mockWebSocket.initialize(url, protocol);
       return mockWebSocket;
     });
+
+    // (Optional) if your code references WebSocket.OPEN/CLOSED/etc:
+    (globalThis.WebSocket as any).OPEN = 1;
+    (globalThis.WebSocket as any).CLOSED = 3;
+    (globalThis.WebSocket as any).CONNECTING = 0;
+    (globalThis.WebSocket as any).CLOSING = 2;
   });
 
   afterEach(() => {
@@ -24,6 +35,10 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
     if (mockWebSocket) {
       mockWebSocket = null!;
     }
+  });
+
+  afterAll(() => {
+    (globalThis as any).WebSocket = originalWebSocket;
   });
 
   it("should timeout subscription when connection acknowledgment is not received", async () => {

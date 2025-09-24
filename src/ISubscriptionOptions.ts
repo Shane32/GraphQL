@@ -7,7 +7,7 @@ interface ISubscriptionOptions {
   /**
    * The timeout strategy to use for managing subscription timeouts and heartbeats.
    */
-  timeoutStrategy?: ITimeoutStrategy;
+  timeoutStrategy?: ITimeoutStrategy | null;
 }
 
 export default ISubscriptionOptions;

@@ -1,6 +1,5 @@
 import { waitFor } from "@testing-library/react";
 import GraphQLClient from "../src/GraphQLClient";
-import IdleTimeoutStrategy from "../src/IdleTimeoutStrategy";
 import CloseReason from "../src/CloseReason";
 import { MockWebSocket } from "./MockWebSocket";
 
@@ -11,6 +10,11 @@ interface IMockFetch {
 }
 let requests: IMockFetch[] = [];
 let mockWebSocket: MockWebSocket;
+let originalWebSocket: any;
+
+beforeAll(() => {
+  originalWebSocket = globalThis.WebSocket;
+});
 
 beforeEach(() => {
   jest.spyOn(global, "fetch").mockImplementation((request, init) => {
@@ -23,17 +27,29 @@ beforeEach(() => {
     });
   });
 
-  // Mock WebSocket constructor
   mockWebSocket = new MockWebSocket();
-  (global as any).WebSocket = jest.fn().mockImplementation((url: string, protocol?: string) => {
+
+  // Replace the constructor for this test
+  (globalThis as any).WebSocket = jest.fn((url: string, protocol?: string) => {
     mockWebSocket.initialize(url, protocol);
-    return mockWebSocket;
+    return mockWebSocket as unknown as WebSocket;
   });
+
+  // (Optional) if your code references WebSocket.OPEN/CLOSED/etc:
+  (globalThis.WebSocket as any).OPEN = 1;
+  (globalThis.WebSocket as any).CLOSED = 3;
+  (globalThis.WebSocket as any).CONNECTING = 0;
+  (globalThis.WebSocket as any).CLOSING = 2;
 });
 
 afterEach(() => {
   requests = [];
+  mockWebSocket?.close?.();
   jest.restoreAllMocks();
+});
+
+afterAll(() => {
+  (globalThis as any).WebSocket = originalWebSocket;
 });
 
 test("executeQueryRaw with json", async () => {

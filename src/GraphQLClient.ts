@@ -9,6 +9,7 @@ import CloseReason from "./CloseReason";
 import ITimeoutStrategy from "./ITimeoutStrategy";
 import ITimeoutApi from "./ITimeoutApi";
 import ISubscriptionOptions from "./ISubscriptionOptions";
+import combineSubscriptionOptions from "./combineSubscriptionOptions";
 import ClientMsg from "./ClientMsg";
 
 interface ICacheEntry {
@@ -338,8 +339,9 @@ export default class GraphQLClient implements IGraphQLClient {
     this.activeSubscriptions += 1;
     const subscriptionId = "1";
 
-    // Determine timeout strategy to use
-    const timeoutStrategy = options?.timeoutStrategy || this.defaultSubscriptionOptions?.timeoutStrategy;
+    // Combine subscription options with defaults, only null overrides defaults
+    const combinedOptions = combineSubscriptionOptions(this.defaultSubscriptionOptions, options);
+    const timeoutStrategy = combinedOptions.timeoutStrategy;
 
     // set up abort
     let aborted = false;
