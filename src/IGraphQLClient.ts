@@ -1,6 +1,8 @@
 import IGraphQLRequest from "./IGraphQLRequest";
 import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
+import CloseReason from "./CloseReason";
+import ISubscriptionOptions from "./ISubscriptionOptions";
 
 /**
  * Represents a client for making GraphQL requests.
@@ -55,13 +57,15 @@ interface IGraphQLClient {
    *
    * @param request The GraphQL request to execute.
    * @param onData The callback function to invoke when new data is received.
-   * @param onClose The callback function to invoke when the subscription is closed.
+   * @param onClose The callback function to invoke when the subscription is closed, including the reason for closure.
+   * @param options Optional subscription configuration.
    * @returns An object containing a promise that resolves when the subscription is connected and a function to abort the subscription.
    */
   ExecuteSubscription: <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
-    onClose: () => void,
+    onClose: (reason: CloseReason) => void,
+    options?: ISubscriptionOptions,
   ) => { connected: Promise<void>; abort: () => void };
 
   /**

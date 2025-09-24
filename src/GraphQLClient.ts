@@ -5,6 +5,11 @@ import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
 import IRequest from "./IRequest";
 import IWebSocketMessage from "./IWebSocketMessage";
+import CloseReason from "./CloseReason";
+import ITimeoutStrategy from "./ITimeoutStrategy";
+import ITimeoutApi from "./ITimeoutApi";
+import ISubscriptionOptions from "./ISubscriptionOptions";
+import ClientMsg from "./ClientMsg";
 
 interface ICacheEntry {
   queryAndVariablesString: string;
@@ -35,6 +40,7 @@ export default class GraphQLClient implements IGraphQLClient {
   private sendDocumentIdAsQuery?: boolean;
   private logHttpError?: (request: IRequest, response: Response) => void;
   private logWebSocketConnectionError?: (request: IGraphQLRequest<any>, connectionMessage: any, receivedMessage: any) => void;
+  private defaultSubscriptionOptions?: ISubscriptionOptions;
 
   public constructor(configuration: IGraphQLConfiguration) {
     this.url = configuration.url;
@@ -55,6 +61,7 @@ export default class GraphQLClient implements IGraphQLClient {
     this.sendDocumentIdAsQuery = configuration.sendDocumentIdAsQuery;
     this.logHttpError = configuration.logHttpError;
     this.logWebSocketConnectionError = configuration.logWebSocketConnectionError;
+    this.defaultSubscriptionOptions = configuration.defaultSubscriptionOptions;
   }
 
   public GetPendingRequests = () => this.pendingRequests;
@@ -325,21 +332,31 @@ export default class GraphQLClient implements IGraphQLClient {
   public ExecuteSubscription = <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
-    onClose: () => void,
+    onClose: (reason: CloseReason) => void,
+    options?: ISubscriptionOptions,
   ) => {
     this.activeSubscriptions += 1;
     const subscriptionId = "1";
+
+    // Determine timeout strategy to use
+    const timeoutStrategy = options?.timeoutStrategy || this.defaultSubscriptionOptions?.timeoutStrategy;
+
     // set up abort
     let aborted = false;
-    let doAbort: () => void = null!;
+    let closeReason: CloseReason = undefined!; // always set by doAbort before used by abortPromise
+    let doAbort: (reason: CloseReason) => void = null!;
     const abortPromise = new Promise<void>((doAbort2) => {
-      doAbort = doAbort2;
+      doAbort = (reason) => {
+        closeReason = reason;
+        doAbort2();
+      };
     });
     // abort will set aborted and call onClose
     abortPromise.then(() => {
       this.activeSubscriptions -= 1;
       aborted = true;
-      onClose();
+      timeoutStrategy?.onClose?.(closeReason);
+      onClose(closeReason);
     });
     // set up data push
     const doData = (data: IQueryResult<TReturn>) => {
@@ -361,7 +378,7 @@ export default class GraphQLClient implements IGraphQLClient {
         size: 1000,
       };
       onData(queryRet);
-      doAbort();
+      doAbort(CloseReason.Error);
     };
 
     // set up connection promise
@@ -389,21 +406,33 @@ export default class GraphQLClient implements IGraphQLClient {
           if (aborted) return;
           // connect to the websocket endpoint
           const webSocket = new WebSocket(this.webSocketUrl, "graphql-transport-ws");
+
           // set up abort/close
           abortPromise.then(() => {
             webSocket.close();
           });
+
+          // define send function
+          const send = (msg: ClientMsg) => {
+            if (!aborted && webSocket.readyState === 1) {
+              // OPEN
+              webSocket.send(JSON.stringify(msg));
+              timeoutStrategy?.onOutbound?.(msg);
+            }
+          };
+
           // set up state machine
           let state: "opening" | "connected" = "opening";
           // when connection is opened, send connection init message
           webSocket.onopen = () => {
             if (aborted) return;
-            const message = {
+            timeoutStrategy?.onOpen?.();
+            send({
               type: "connection_init",
               payload: payload,
-            };
-            webSocket.send(JSON.stringify(message));
+            });
           };
+
           // when message received, process it
           webSocket.onmessage = (ev) => {
             // parse the incoming message
@@ -422,9 +451,14 @@ export default class GraphQLClient implements IGraphQLClient {
               return;
             }
 
+            // Let timeout strategy observe the message first
+            if (timeoutStrategy?.onInbound?.(message) === false) {
+              return; // Strategy consumed the message
+            }
+
             // process message based on state machine
             if (message.type === "ping") {
-              webSocket.send(JSON.stringify({ type: "pong", payload: message.payload }));
+              send({ type: "pong", payload: message.payload });
             } else if (state === "opening") {
               if (message.type !== "connection_ack") {
                 // Log WebSocket connection error if the callback is defined
@@ -442,13 +476,12 @@ export default class GraphQLClient implements IGraphQLClient {
                   connectionResolved = true;
                   resolveConnection();
                 }
-                webSocket.send(
-                  JSON.stringify({
-                    id: subscriptionId,
-                    type: "subscribe",
-                    payload: request,
-                  }),
-                );
+                timeoutStrategy?.onAck?.();
+                send({
+                  id: subscriptionId,
+                  type: "subscribe",
+                  payload: request,
+                });
               }
             } else if (state === "connected") {
               if (message.type === "next") {
@@ -473,19 +506,20 @@ export default class GraphQLClient implements IGraphQLClient {
                   size: (ev.data as string).length,
                   errors: message.payload,
                 });
-                doAbort();
+                doAbort(CloseReason.Error);
               } else if (message.type === "complete") {
                 if (message.id !== subscriptionId) {
                   doError("Invalid payload for 'complete' packet");
                   return;
                 }
-                doAbort();
+                doAbort(CloseReason.Server);
               } else {
                 // unknown message type
                 doError("Unknown message type from WebSocket server");
               }
             }
           };
+
           // when websocket closed, notify caller (only raises error if not closed from this end)
           webSocket.onclose = (ev: CloseEvent) => {
             // Log WebSocket connection error if the callback is defined
@@ -498,6 +532,14 @@ export default class GraphQLClient implements IGraphQLClient {
             }
             doError("WebSocket connection unexpectedly closed");
           };
+
+          // Create timeout API for strategy
+          timeoutStrategy?.attach({
+            send,
+            abort: doAbort,
+            request,
+            subscriptionId,
+          });
         },
         // when failed to generate payload, notify caller
         (error) => {
@@ -508,7 +550,7 @@ export default class GraphQLClient implements IGraphQLClient {
 
     return {
       connected: connectionPromise,
-      abort: doAbort,
+      abort: () => doAbort(CloseReason.Client),
     };
   };
 

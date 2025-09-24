@@ -22,6 +22,7 @@ A TypeScript-first GraphQL client for React applications with built-in caching, 
 - [Quick Start](#quick-start)
 - [Advanced Configuration](#advanced-configuration)
 - [Usage](#usage)
+- [Subscription Timeout Strategies](#subscription-timeout-strategies)
 - [API Reference](#api-reference)
 - [Testing](#testing)
 - [GraphQL Codegen Support](#graphql-codegen-support)
@@ -58,7 +59,7 @@ This package uses the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/A
 
 ```tsx
 import React from 'react';
-import { GraphQLClient, GraphQLContext, useQuery } from '@shane32/graphql';
+import { GraphQLClient, GraphQLContext, useQuery, IdleTimeoutStrategy } from '@shane32/graphql';
 
 // 1. Create a client
 const client = new GraphQLClient({
@@ -114,6 +115,11 @@ const client = new GraphQLClient({
 
     // optional; provides payload for WebSocket connection initialization messages; used to provide authentication information to request
     generatePayload: () => Promise.resolve({}),
+
+    // optional; default options for subscriptions
+    defaultSubscriptionOptions: {
+        timeoutStrategy: new IdleTimeoutStrategy(30000)  // abort subscription if no messages received for 30 seconds
+    },
 
     // optional; callback for logging non-2xx HTTP status codes
     logHttpError: (request, response) => {
@@ -277,6 +283,53 @@ const ProductPriceUpdateComponent = ({ productId }) => {
 };
 ```
 
+### Subscription Timeout Strategies
+
+The client supports configurable timeout strategies for subscriptions to handle connection reliability and heartbeat management. You can set a default timeout strategy for all subscriptions or specify one per subscription.
+
+**IdleTimeoutStrategy** aborts the subscription if no inbound messages are received within the specified timeout period.
+
+```typescript
+import { IdleTimeoutStrategy } from '@shane32/graphql';
+
+// Abort subscription if no messages received for 30 seconds
+const idleStrategy = new IdleTimeoutStrategy(30000);
+```
+
+**CorrelatedPingStrategy** sends periodic pings and expects matching pongs within a deadline. Aborts if pong is not received in time.
+
+```typescript
+import { CorrelatedPingStrategy } from '@shane32/graphql';
+
+// Parameters: ackTimeoutMs, pingIntervalMs, pongDeadlineMs
+const pingStrategy = new CorrelatedPingStrategy(5000, 10000, 3000);
+```
+
+You can set the default timeout strategy within the `defaultSubscriptionOptions` configuration setting as follows:
+
+```typescript
+const client = new GraphQLClient({
+    url: 'https://api.example.com/graphql',
+    webSocketUrl: 'wss://api.example.com/graphql',
+    defaultSubscriptionOptions: {
+        timeoutStrategy: new IdleTimeoutStrategy(30000)
+    }
+});
+```
+
+Alternatively, you can set the timeout strategy for a specific subscription when calling `ExecuteSubscription`:
+
+```typescript
+const { connected, abort } = client.ExecuteSubscription(
+    { query: subscription, variables: { id: "123" } },
+    (data) => console.log(data),
+    () => console.log("Subscription closed"),
+    {
+        timeoutStrategy: new CorrelatedPingStrategy(5000, 10000, 3000)
+    }
+);
+```
+
 ## GraphQL Codegen Support
 
 If you want to add GraphQL Codegen to your project, refer to [CODEGEN-README.md](./CODEGEN-README.md)
@@ -330,6 +383,7 @@ This is useful when you need to create request objects outside of the provided h
 | `sendDocumentIdAsQuery` | `false` | Include documentId as query parameter instead of POST body |
 | `transformRequest` | - | Transform requests (e.g., add auth headers) |
 | `generatePayload` | - | Generate WebSocket connection payload |
+| `defaultSubscriptionOptions` | - | Default options for subscriptions (e.g. timeout strategy) |
 | `logHttpError` | - | Log HTTP errors |
 | `logWebSocketConnectionError` | - | Log WebSocket errors |
 
@@ -415,6 +469,26 @@ interface IGraphQLContext {
   [key: string]: IGraphQLClient; // Additional named clients
 }
 ```
+
+### Timeout Strategies
+
+#### IdleTimeoutStrategy
+
+Aborts subscriptions if no inbound messages are received within the specified timeout period.
+
+**Constructor:**
+
+- `idleMs` (number): Timeout in milliseconds
+
+#### CorrelatedPingStrategy
+
+Sends periodic pings and expects matching pongs within a deadline. Aborts if pong is not received in time.
+
+**Constructor:**
+
+- `ackTimeoutMs` (number): Connection acknowledgment timeout in milliseconds
+- `pingIntervalMs` (number): Interval between ping messages in milliseconds
+- `pongDeadlineMs` (number): Maximum time to wait for pong response in milliseconds
 
 ## Testing
 
@@ -506,24 +580,30 @@ import 'whatwg-fetch';
 ```
 
 #### WebSocket connection fails
+
 - Ensure your GraphQL server supports the [graphql-ws](https://github.com/enisdenjo/graphql-ws) protocol
 - Check that the WebSocket URL is correct and accessible
 - Verify authentication if required using the `generatePayload` option
 
 #### TypeScript errors with queries
+
 - Ensure you have the correct peer dependencies installed
 - Use proper TypeScript generics with hooks:
+
   ```typescript
   const { data } = useQuery<QueryResult, QueryVariables>(query, options);
   ```
 
 #### Caching issues
+
 - Use `fetchPolicy: 'no-cache'` to bypass cache for testing
 - Clear cache manually if needed (implementation depends on your setup)
 - Check `defaultCacheTime` and `maxCacheSize` settings
 
 #### Authentication problems
+
 - Use `transformRequest` to add authentication headers:
+
   ```typescript
   const client = new GraphQLClient({
     url: 'https://api.example.com/graphql',
