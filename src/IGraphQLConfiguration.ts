@@ -1,6 +1,6 @@
 import IRequest from "./IRequest";
 import IGraphQLRequest from "./IGraphQLRequest";
-import ITimeoutStrategy from "./ITimeoutStrategy";
+import ISubscriptionOptions from "./ISubscriptionOptions";
 
 /**
  * Represents configuration options for making GraphQL requests.
@@ -77,10 +77,7 @@ interface IGraphQLConfiguration {
   /**
    * Default options for subscriptions.
    */
-  defaultSubscriptionOptions?: {
-    /** The timeout strategy to use for managing subscription timeouts and heartbeats. */
-    timeoutStrategy?: ITimeoutStrategy;
-  };
+  defaultSubscriptionOptions?: ISubscriptionOptions;
 }
 
 export default IGraphQLConfiguration;

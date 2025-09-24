@@ -8,6 +8,7 @@ import IWebSocketMessage from "./IWebSocketMessage";
 import CloseReason from "./CloseReason";
 import ITimeoutStrategy from "./ITimeoutStrategy";
 import ITimeoutApi from "./ITimeoutApi";
+import ISubscriptionOptions from "./ISubscriptionOptions";
 import ClientMsg from "./ClientMsg";
 
 interface ICacheEntry {
@@ -39,7 +40,7 @@ export default class GraphQLClient implements IGraphQLClient {
   private sendDocumentIdAsQuery?: boolean;
   private logHttpError?: (request: IRequest, response: Response) => void;
   private logWebSocketConnectionError?: (request: IGraphQLRequest<any>, connectionMessage: any, receivedMessage: any) => void;
-  private defaultSubscriptionOptions?: { timeoutStrategy?: ITimeoutStrategy };
+  private defaultSubscriptionOptions?: ISubscriptionOptions;
 
   public constructor(configuration: IGraphQLConfiguration) {
     this.url = configuration.url;
@@ -332,7 +333,7 @@ export default class GraphQLClient implements IGraphQLClient {
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
     onClose: (reason: CloseReason) => void,
-    options?: { timeoutStrategy?: ITimeoutStrategy },
+    options?: ISubscriptionOptions,
   ) => {
     this.activeSubscriptions += 1;
     const subscriptionId = "1";
