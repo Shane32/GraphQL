@@ -46,7 +46,7 @@ interface TestData {
   pokemon_v2_version: Array<{ name: string }>;
 }
 
-const useAutoSubscriptionBasicTest = async () => {
+it("useAutoSubscription basic functionality works", async () => {
   function TestUseAutoSubscription() {
     const [receivedData, setReceivedData] = React.useState<TestData[]>([]);
     const [closeReason, setCloseReason] = React.useState<CloseReason | undefined>();
@@ -121,6 +121,9 @@ const useAutoSubscriptionBasicTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -145,12 +148,10 @@ const useAutoSubscriptionBasicTest = async () => {
   expect(screen.getByText("Pokemon: blue")).toBeInTheDocument();
 
   // Wait for subscription to close and reconnect attempt
-  await waitFor(() => expect(screen.getByText("State: Connecting")).toBeInTheDocument());
-};
+  await waitFor(() => expect(screen.getByText("State: Completed")).toBeInTheDocument());
+});
 
-it("useAutoSubscription basic functionality works", () => useAutoSubscriptionBasicTest());
-
-const useAutoSubscriptionEnabledDisabledTest = async () => {
+it("useAutoSubscription enabled/disabled functionality works", async () => {
   function TestUseAutoSubscription() {
     const [enabled, setEnabled] = React.useState(true);
     const [receivedData, setReceivedData] = React.useState<TestData[]>([]);
@@ -212,6 +213,9 @@ const useAutoSubscriptionEnabledDisabledTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -236,11 +240,9 @@ const useAutoSubscriptionEnabledDisabledTest = async () => {
 
   // Should become disconnected
   await waitFor(() => expect(screen.getByText("State: Disconnected")).toBeInTheDocument());
-};
+});
 
-it("useAutoSubscription enabled/disabled functionality works", () => useAutoSubscriptionEnabledDisabledTest());
-
-const useAutoSubscriptionStartDisabledTest = async () => {
+it("useAutoSubscription starts disabled and can be enabled", async () => {
   function TestUseAutoSubscription() {
     const [enabled, setEnabled] = React.useState(false);
     const [openCount, setOpenCount] = React.useState(0);
@@ -265,6 +267,9 @@ const useAutoSubscriptionStartDisabledTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -313,11 +318,9 @@ const useAutoSubscriptionStartDisabledTest = async () => {
   // Wait for connection
   await waitFor(() => expect(screen.getByText("State: Connected")).toBeInTheDocument());
   expect(screen.getByText("Opens: 1")).toBeInTheDocument();
-};
+});
 
-it("useAutoSubscription starts disabled and can be enabled", () => useAutoSubscriptionStartDisabledTest());
-
-const useAutoSubscriptionWithVariablesFunctionTest = async () => {
+it("useAutoSubscription works with variables function", async () => {
   function TestUseAutoSubscription() {
     const [version, setVersion] = React.useState("v1");
     const [receivedData, setReceivedData] = React.useState<TestData[]>([]);
@@ -387,6 +390,9 @@ const useAutoSubscriptionWithVariablesFunctionTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -404,11 +410,9 @@ const useAutoSubscriptionWithVariablesFunctionTest = async () => {
   // Wait for data
   await waitFor(() => expect(screen.getByText("Data Count: 1")).toBeInTheDocument());
   expect(screen.getByText("Pokemon: red-v1")).toBeInTheDocument();
-};
+});
 
-it("useAutoSubscription works with variables function", () => useAutoSubscriptionWithVariablesFunctionTest());
-
-const useAutoSubscriptionWithStaticVariablesTest = async () => {
+it("useAutoSubscription works with static variables", async () => {
   function TestUseAutoSubscription() {
     const [receivedData, setReceivedData] = React.useState<TestData[]>([]);
 
@@ -470,6 +474,9 @@ const useAutoSubscriptionWithStaticVariablesTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -485,11 +492,9 @@ const useAutoSubscriptionWithStaticVariablesTest = async () => {
   // Wait for data
   await waitFor(() => expect(screen.getByText("Data Count: 1")).toBeInTheDocument());
   expect(screen.getByText("Pokemon: static-red")).toBeInTheDocument();
-};
+});
 
-it("useAutoSubscription works with static variables", () => useAutoSubscriptionWithStaticVariablesTest());
-
-const useAutoSubscriptionReconnectionTest = async () => {
+it("useAutoSubscription handles reconnection after server close", async () => {
   function TestUseAutoSubscription() {
     const [receivedData, setReceivedData] = React.useState<TestData[]>([]);
     const [openCount, setOpenCount] = React.useState(0);
@@ -547,7 +552,7 @@ const useAutoSubscriptionReconnectionTest = async () => {
         },
       },
       // Simulate server close
-      { kind: "message", data: { type: "complete", id: "1" } },
+      { kind: "close" },
     ],
   );
 
@@ -593,6 +598,9 @@ const useAutoSubscriptionReconnectionTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -620,6 +628,4 @@ const useAutoSubscriptionReconnectionTest = async () => {
   // Wait for second data packet
   await waitFor(() => expect(screen.getByText("Data Count: 2")).toBeInTheDocument());
   expect(screen.getByText("Pokemon: second-connection")).toBeInTheDocument();
-};
-
-it("useAutoSubscription handles reconnection after server close", () => useAutoSubscriptionReconnectionTest());
+});

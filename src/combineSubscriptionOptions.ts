@@ -10,5 +10,6 @@ import ISubscriptionOptions from "./ISubscriptionOptions";
 export default function combineSubscriptionOptions(base?: ISubscriptionOptions, override?: ISubscriptionOptions): ISubscriptionOptions {
   return {
     timeoutStrategy: override?.timeoutStrategy !== undefined ? override.timeoutStrategy : base?.timeoutStrategy,
+    reconnectionStrategy: override?.reconnectionStrategy !== undefined ? override.reconnectionStrategy : base?.reconnectionStrategy,
   };
 }

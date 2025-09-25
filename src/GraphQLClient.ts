@@ -41,7 +41,7 @@ export default class GraphQLClient implements IGraphQLClient {
   private sendDocumentIdAsQuery?: boolean;
   private logHttpError?: (request: IRequest, response: Response) => void;
   private logWebSocketConnectionError?: (request: IGraphQLRequest<any>, connectionMessage: any, receivedMessage: any) => void;
-  private defaultSubscriptionOptions?: ISubscriptionOptions;
+  public readonly defaultSubscriptionOptions?: ISubscriptionOptions;
 
   public constructor(configuration: IGraphQLConfiguration) {
     this.url = configuration.url;
@@ -511,7 +511,7 @@ export default class GraphQLClient implements IGraphQLClient {
                   size: (ev.data as string).length,
                   errors: message.payload,
                 });
-                doAbort(CloseReason.Error);
+                doAbort(CloseReason.ServerError);
               } else if (message.type === "complete") {
                 if (message.id !== subscriptionId) {
                   doError("Invalid payload for 'complete' packet");

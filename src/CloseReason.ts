@@ -5,6 +5,9 @@ enum CloseReason {
   /** Server ended the subscription cleanly */
   Server = "Server",
 
+  /** Server was unable to start the subscription */
+  ServerError = "ServerError",
+
   /** Network/protocol error or unexpected disconnect */
   Error = "Error",
 

@@ -7,7 +7,7 @@ export { default as GraphQLError } from "./GraphQLError";
 export { default as useQuery } from "./useQuery";
 export { default as useMutation } from "./useMutation";
 export { default as useSubscription } from "./useSubscription";
-export { default as useAutoSubscription } from "./useAutoSubscription";
+export { default as useAutoSubscription, AutoSubscriptionState } from "./useAutoSubscription";
 export { default as gql } from "./GraphQLTag";
 export { default as createRequest } from "./createRequest";
 export { default as CloseReason } from "./CloseReason";
@@ -19,6 +19,11 @@ export { default as ISubscriptionOptions } from "./ISubscriptionOptions";
 export { default as ClientMsg } from "./ClientMsg";
 export { default as IdleTimeoutStrategy } from "./IdleTimeoutStrategy";
 export { default as CorrelatedPingStrategy } from "./CorrelatedPingStrategy";
+
+export { default as IReconnectionStrategy } from "./IReconnectionStrategy";
+export { default as IReconnectionConnectionHandler } from "./IReconnectionConnectionHandler";
+export { default as DelayedReconnectionStrategy } from "./DelayedReconnectionStrategy";
+export { default as BackoffReconnectionStrategy } from "./BackoffReconnectionStrategy";
 
 export { default as GraphQLTestClient } from "./GraphQLTestClient";
 export { default as IGraphQLTestConfig } from "./IGraphQLTestConfig";
