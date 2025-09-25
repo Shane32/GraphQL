@@ -65,7 +65,7 @@ interface IGraphQLClient {
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
     onClose: (reason: CloseReason) => void,
-    options?: ISubscriptionOptions,
+    options?: ISubscriptionOptions & { onOpen?: () => void },
   ) => { connected: Promise<void>; abort: () => void };
 
   /**
