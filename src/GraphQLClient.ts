@@ -10,6 +10,7 @@ import ISubscriptionOptions from "./ISubscriptionOptions";
 import combineSubscriptionOptions from "./combineSubscriptionOptions";
 import ClientMsg from "./ClientMsg";
 import ITimeoutConnectionHandler from "./ITimeoutConnectionHandler";
+import IExecuteSubscriptionOptions from "./IExecuteSubscriptionOptions";
 
 interface ICacheEntry {
   queryAndVariablesString: string;
@@ -333,7 +334,7 @@ export default class GraphQLClient implements IGraphQLClient {
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
     onClose: (reason: CloseReason) => void,
-    options?: ISubscriptionOptions & { onOpen?: () => void },
+    options?: IExecuteSubscriptionOptions,
   ) => {
     this.activeSubscriptions += 1;
     const subscriptionId = "1";

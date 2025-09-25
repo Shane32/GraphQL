@@ -2,7 +2,7 @@ import IGraphQLRequest from "./IGraphQLRequest";
 import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
 import CloseReason from "./CloseReason";
-import ISubscriptionOptions from "./ISubscriptionOptions";
+import IExecuteSubscriptionOptions from "./IExecuteSubscriptionOptions";
 
 /**
  * Represents a client for making GraphQL requests.
@@ -71,7 +71,7 @@ interface IGraphQLClient {
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
     onClose: (reason: CloseReason) => void,
-    options?: ISubscriptionOptions & { onOpen?: () => void },
+    options?: IExecuteSubscriptionOptions,
   ) => { connected: Promise<void>; abort: () => void };
 
   /**
