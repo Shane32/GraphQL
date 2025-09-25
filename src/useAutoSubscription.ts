@@ -38,11 +38,11 @@ export interface IUseAutoSubscriptionOptions<TResult, TVariables> extends ISubsc
   operationName?: string;
   /** Additional extensions to add to the subscription. */
   extensions?: {} | null;
-  /** The callback function to invoke when new data is received. */
+  /** The callback function to invoke when new data is received. The latest function reference is always used. */
   onData?: (data: IQueryResult<TResult>) => void;
-  /** The callback function to invoke when the subscription successfully connects. */
+  /** The callback function to invoke when the subscription successfully connects. The latest function reference is always used. */
   onOpen?: () => void;
-  /** The callback function to invoke when the subscription is closed. */
+  /** The callback function to invoke when the subscription is closed. The latest function reference is always used. */
   onClose?: (reason: CloseReason) => void;
   /** Whether the subscription should be enabled (connected) or disabled (disconnected). Defaults to true. */
   enabled?: boolean;
@@ -68,6 +68,11 @@ const dummySubscription = { connected: Promise.resolve(), abort: () => {} };
  * @param {string | TypedDocumentString<TResult, TVariables>} query The GraphQL subscription string or typed document.
  * @param {IUseAutoSubscriptionOptions<TResult, TVariables>} [options] The options for the auto-subscription.
  * @returns {IUseAutoSubscriptionResult} An object containing the current state of the subscription.
+ *
+ * @remarks
+ * The subscription will disconnect and reconnect when any of the following change:
+ * - `client`, `query`, `operationName`, `extensions`, `enabled`, or `timeoutStrategy` options
+ * - `variables` when provided as an object (not as a function)
  */
 const useAutoSubscription = <TResult, TVariables = unknown>(
   query: string | TypedDocumentString<TResult, TVariables>,
