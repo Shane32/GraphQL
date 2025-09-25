@@ -77,7 +77,7 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
 
   private TestQueriesArray: Array<ITestDynamicQuery<any, any>> = [];
 
-  public AddTestQuery = <TResult, TVariables = undefined>(
+  public addTestQuery = <TResult, TVariables = undefined>(
     arg:
       | (ITestQuery<TResult, TVariables> & { query?: string })
       | (Omit<ITestQuery<TResult, TVariables>, "query"> & { query?: TypedDocumentString<TResult, TVariables> })
@@ -123,24 +123,24 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     }
   };
 
-  public GetPendingRequests = () => 0;
+  public getPendingRequests = () => 0;
 
-  public GetActiveSubscriptions = () => 0;
+  public getActiveSubscriptions = () => 0;
 
-  public ExecuteQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
-    const result = this.ExecuteTestQuery<TReturn, TVariables>(request);
+  public executeQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
+    const result = this.executeTestQuery<TReturn, TVariables>(request);
     if (!result) {
       throw new Error(
         'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null),
       );
     }
     return {
-      result: Promise.resolve(this.CreateQueryResult(result)),
+      result: Promise.resolve(this.createQueryResult(result)),
       abort: () => {},
     };
   };
 
-  private CreateQueryResult = <T>(result: ITestQueryResult<T>) => {
+  private createQueryResult = <T>(result: ITestQueryResult<T>) => {
     let ret: IQueryResult<T>;
     if (result) {
       ret = {
@@ -162,17 +162,17 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     return ret;
   };
 
-  public ExecuteQuery = <TReturn, TVariables = undefined>(
+  public executeQuery = <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     cacheMode?: "no-cache" | "cache-first" | "cache-and-network",
   ) => {
-    const queryResult = this.ExecuteTestQuery<TReturn, TVariables>(request);
+    const queryResult = this.executeTestQuery<TReturn, TVariables>(request);
     if (!queryResult) {
       throw new Error(
         'No test configured for the requested query - "' + request.query + '" - ' + JSON.stringify(request.variables || null),
       );
     }
-    const result = this.CreateQueryResult(queryResult);
+    const result = this.createQueryResult(queryResult);
     const resultPromise = Promise.resolve(result);
     const ret: IQueryResponse<TReturn> = {
       result: result,
@@ -186,7 +186,7 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     return ret;
   };
 
-  public ExecuteTestQuery: <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => ITestQueryResult<TReturn> | null = (
+  public executeTestQuery: <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => ITestQueryResult<TReturn> | null = (
     request: IGraphQLRequest<any>,
   ) => {
     for (let i = this.TestQueriesArray.length - 1; i >= 0; i--) {
@@ -196,13 +196,13 @@ export default class GraphQLTestClient implements IGraphQLClient, IGraphQLTestCo
     return null;
   };
 
-  public RefreshAll = () => {};
+  public refreshAll = () => {};
 
-  public ClearCache = () => {};
+  public clearCache = () => {};
 
-  public ResetStore = () => {};
+  public resetStore = () => {};
 
-  public ExecuteSubscription = () => {
+  public executeSubscription = () => {
     throw new Error("Subscriptions not supported in test environment");
   };
 }

@@ -89,7 +89,7 @@ const useQuery: <TResult, TVariables = unknown>(
       extensions: options?.extensions,
     });
 
-    return client.ExecuteQuery<TResult, TVariables>(request, options?.fetchPolicy);
+    return client.executeQuery<TResult, TVariables>(request, options?.fetchPolicy);
   }, [
     client,
     options?.skip,

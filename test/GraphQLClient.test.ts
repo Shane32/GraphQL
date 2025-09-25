@@ -56,7 +56,7 @@ test("executeQueryRaw with json", async () => {
   const client = new GraphQLClient({
     url: "https://api.example.com/api/graphql",
   });
-  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+  const ret = client.executeQueryRaw<{ v1: { info: { version: string } } }>({
     query: "{ v1 { info { version } } }",
   });
 
@@ -94,7 +94,7 @@ test("executeQueryRaw with json and alt response type", async () => {
   const client = new GraphQLClient({
     url: "https://api.example.com/api/graphql",
   });
-  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+  const ret = client.executeQueryRaw<{ v1: { info: { version: string } } }>({
     query: "{ v1 { info { version } } }",
   });
 
@@ -135,7 +135,7 @@ test("executeQueryRaw with form", async () => {
     url: "https://api.example.com/api/graphql",
     asForm: true,
   });
-  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+  const ret = client.executeQueryRaw<{ v1: { info: { version: string } } }>({
     query: "{ v1 { info { version } } }",
   });
 
@@ -174,7 +174,7 @@ test("executeQuery", async () => {
     url: "https://api.example.com/api/graphql",
     asForm: true,
   });
-  const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache");
+  const ret = client.executeQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache");
 
   expect(ret.result).toBeNull();
   expect(ret.loading).toBe(true);
@@ -246,7 +246,7 @@ test("executeSubscription", async () => {
     ],
   );
 
-  const ret = client.ExecuteSubscription<{ pokemon_v2_version: Array<{ name: string }> }>(
+  const ret = client.executeSubscription<{ pokemon_v2_version: Array<{ name: string }> }>(
     {
       query: "subscription { pokemon_v2_version { name } }",
     },

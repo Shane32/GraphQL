@@ -65,11 +65,11 @@ export default class GraphQLClient implements IGraphQLClient {
     this.defaultSubscriptionOptions = configuration.defaultSubscriptionOptions;
   }
 
-  public GetPendingRequests = () => this.pendingRequests;
+  public getPendingRequests = () => this.pendingRequests;
 
-  public GetActiveSubscriptions = () => this.activeSubscriptions;
+  public getActiveSubscriptions = () => this.activeSubscriptions;
 
-  public ExecuteQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
+  public executeQueryRaw = <TReturn, TVariables = undefined>(request: IGraphQLRequest<TVariables>) => {
     let body: FormData | string;
 
     // If the request should be sent as a form, create a FormData object and append the necessary fields
@@ -225,7 +225,7 @@ export default class GraphQLClient implements IGraphQLClient {
     };
   };
 
-  public ExecuteQuery = <TReturn, TVariables = undefined>(
+  public executeQuery = <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     cacheMode?: "no-cache" | "cache-first" | "cache-and-network",
     cacheTimeout?: number,
@@ -250,7 +250,7 @@ export default class GraphQLClient implements IGraphQLClient {
           if (newEntry.response.loading) return newEntry.response.resultPromise;
           // Otherwise, start executing the request
           newEntry.response.loading = true;
-          const exec = this.ExecuteQueryRaw<TReturn, TVariables>(request);
+          const exec = this.executeQueryRaw<TReturn, TVariables>(request);
           newEntry.response.resultPromise = exec.result;
           newEntry.cancelRequest = exec.abort;
           // When the query result is resolved (note: data may contain a sucessful or failed response; the promise will not be rejected)
@@ -266,7 +266,7 @@ export default class GraphQLClient implements IGraphQLClient {
                 newEntry.expires = 0;
               } else {
                 // Set the cache entry size
-                this.SetCacheEntrySize(newEntry, data.size + 1000);
+                this.setCacheEntrySize(newEntry, data.size + 1000);
                 // Set the cache entry expiration date
                 if (cacheMode !== "no-cache") newEntry.expires = Date.now() + cacheTimeoutValue;
               }
@@ -319,7 +319,7 @@ export default class GraphQLClient implements IGraphQLClient {
       newEntry.response.refresh();
     };
     // Get or create a cache entry using the factory function
-    const newEntry = this.GetOrCreateCacheEntry(queryAndVariablesString, newEntryFactory, cacheMode === "no-cache");
+    const newEntry = this.getOrCreateCacheEntry(queryAndVariablesString, newEntryFactory, cacheMode === "no-cache");
     // If there are no subscribers and the cache mode is "cache-and-network" or the cache entry has expired, refresh the cache entry
     // (note: 'no-cache' would have already created a new request)
     // But for "cache-first" mode, or subscribers to a request whose entry has not expired, does not need a refresh
@@ -330,7 +330,7 @@ export default class GraphQLClient implements IGraphQLClient {
     return newEntry.response as IQueryResponse<TReturn>;
   };
 
-  public ExecuteSubscription = <TReturn, TVariables = undefined>(
+  public executeSubscription = <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
     onClose: (reason: CloseReason) => void,
@@ -564,11 +564,11 @@ export default class GraphQLClient implements IGraphQLClient {
     };
   };
 
-  public RefreshAll = (force?: boolean) => {
+  public refreshAll = (force?: boolean) => {
     // expire all cache entries
     // dump cache entries not in use
     // refresh cache entries in use
-    this.ClearCache();
+    this.clearCache();
     this.cache.forEach((value) => {
       if (value.subscribers.length > 0) {
         if (force) value.response.forceRefresh();
@@ -577,27 +577,27 @@ export default class GraphQLClient implements IGraphQLClient {
     });
   };
 
-  public ClearCache = () => {
+  public clearCache = () => {
     // expire all cache entries
     // dump cache entries not in use
     // do not refresh cache entries in use
     this.cache.forEach((value) => {
       value.expires = 0;
     });
-    this.AllocateCacheSize(this.maxCacheSize);
+    this.allocateCacheSize(this.maxCacheSize);
   };
 
-  public ResetStore = () => {
+  public resetStore = () => {
     // expire all cache entries not in use
     // dump cache entries not in use
-    this.ClearCache();
+    this.clearCache();
     // refresh all cache entries in use
     this.cache.forEach((value) => {
       value.response.clearAndRefresh();
     });
   };
 
-  private GetOrCreateCacheEntry = (
+  private getOrCreateCacheEntry = (
     queryAndVariablesString: string,
     newEntryFactory: (cacheEntry: ICacheEntry) => void,
     noCache: boolean,
@@ -622,7 +622,7 @@ export default class GraphQLClient implements IGraphQLClient {
       size: 1000,
     };
     newEntryFactory(newEntry);
-    this.AllocateCacheSize(newEntry.size);
+    this.allocateCacheSize(newEntry.size);
     newEntry.queryAndVariablesString = queryAndVariablesString;
     newEntry.lastUsed = nowDate;
     this.cacheSize += newEntry.size;
@@ -630,17 +630,17 @@ export default class GraphQLClient implements IGraphQLClient {
     return newEntry;
   };
 
-  private SetCacheEntrySize = (cacheEntry: ICacheEntry, newSize: number) => {
+  private setCacheEntrySize = (cacheEntry: ICacheEntry, newSize: number) => {
     const entry = this.cache.get(cacheEntry.queryAndVariablesString);
     if (entry && entry === cacheEntry) {
       this.cacheSize -= entry.size;
-      this.AllocateCacheSize(newSize, entry);
+      this.allocateCacheSize(newSize, entry);
       this.cacheSize += entry.size;
     }
     cacheEntry.size = newSize;
   };
 
-  private AllocateCacheSize = (newSize: number, exclude?: ICacheEntry) => {
+  private allocateCacheSize = (newSize: number, exclude?: ICacheEntry) => {
     //check if we need more space
     const needBytes = this.cacheSize + newSize - this.maxCacheSize;
     if (needBytes <= 0) {

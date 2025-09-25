@@ -60,7 +60,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       [], // No response - should trigger ack timeout
     );
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },
@@ -142,7 +142,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       return null;
     });
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },
@@ -222,7 +222,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       });
     }
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },
@@ -306,7 +306,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
     // Expect pong response to server ping
     mockWebSocket.expect({ type: "pong", payload: { serverPingId: "server-123" } }, []);
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },
@@ -397,7 +397,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       ],
     );
 
-    const ret = client.ExecuteSubscription<{ authenticatedData: { value: string } }>(
+    const ret = client.executeSubscription<{ authenticatedData: { value: string } }>(
       {
         query: "subscription { authenticatedData { value } }",
       },
@@ -456,7 +456,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       ],
     );
 
-    const ret = client.ExecuteSubscription<{ invalidField: { value: string } }>(
+    const ret = client.executeSubscription<{ invalidField: { value: string } }>(
       {
         query: "subscription { invalidField { value } }",
       },
@@ -535,7 +535,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
       });
     }
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },

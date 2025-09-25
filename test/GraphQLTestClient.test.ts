@@ -31,7 +31,7 @@ test("executeQueryRaw with json", async () => {
   const client = new GraphQLClient({
     url: "https://api.example.com/api/graphql",
   });
-  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+  const ret = client.executeQueryRaw<{ v1: { info: { version: string } } }>({
     query: "{ v1 { info { version } } }",
   });
 
@@ -69,7 +69,7 @@ test("executeQueryRaw with json and alt response type", async () => {
   const client = new GraphQLClient({
     url: "https://api.example.com/api/graphql",
   });
-  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+  const ret = client.executeQueryRaw<{ v1: { info: { version: string } } }>({
     query: "{ v1 { info { version } } }",
   });
 
@@ -110,7 +110,7 @@ test("executeQueryRaw with form", async () => {
     url: "https://api.example.com/api/graphql",
     asForm: true,
   });
-  const ret = client.ExecuteQueryRaw<{ v1: { info: { version: string } } }>({
+  const ret = client.executeQueryRaw<{ v1: { info: { version: string } } }>({
     query: "{ v1 { info { version } } }",
   });
 
@@ -149,7 +149,7 @@ test("executeQuery", async () => {
     url: "https://api.example.com/api/graphql",
     asForm: true,
   });
-  const ret = client.ExecuteQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache");
+  const ret = client.executeQuery<{ v1: { info: { version: string } } }>({ query: "{ v1 { info { version } } }" }, "no-cache");
 
   expect(ret.result).toBeNull();
   expect(ret.loading).toBe(true);
@@ -194,19 +194,19 @@ test("GraphQLTestClient with TypedDocumentString using hash", () => {
     toString: () => "{ test { field } }",
   } as TypedDocumentString<{ test: { field: string } }, { [key: string]: never }>;
 
-  client.AddTestQuery({
+  client.addTestQuery({
     query: document,
     result: { data: { test: { field: "value" } } },
   });
 
   // Test matching with documentId
-  const result1 = client.ExecuteTestQuery<{ test: { field: string } }>({
+  const result1 = client.executeTestQuery<{ test: { field: string } }>({
     documentId: "myhash",
   });
   expect(result1?.data?.test.field).toBe("value");
 
   // Test non-matching documentId
-  const result2 = client.ExecuteTestQuery({
+  const result2 = client.executeTestQuery({
     documentId: "wronghash",
   });
   expect(result2).toBeNull();
@@ -218,19 +218,19 @@ test("GraphQLTestClient with TypedDocumentString using query string", () => {
     toString: () => "{ test { field } }",
   } as TypedDocumentString<{ test: { field: string } }, { [key: string]: never }>;
 
-  client.AddTestQuery({
+  client.addTestQuery({
     query: document,
     result: { data: { test: { field: "value" } } },
   });
 
   // Test exact match
-  const result1 = client.ExecuteTestQuery<{ test: { field: string } }>({
+  const result1 = client.executeTestQuery<{ test: { field: string } }>({
     query: "{ test { field } }",
   });
   expect(result1?.data?.test.field).toBe("value");
 
   // Test non-matching query
-  const result2 = client.ExecuteTestQuery({
+  const result2 = client.executeTestQuery({
     query: "{ other { field } }",
   });
   expect(result2).toBeNull();
@@ -243,19 +243,19 @@ test("GraphQLTestClient with TypedDocumentString using MatchAnyPart", () => {
     toString: () => "{ test { field } }",
   } as TypedDocumentString<{ test: { field: string } }, { [key: string]: never }>;
 
-  client.AddTestQuery({
+  client.addTestQuery({
     query: document,
     result: { data: { test: { field: "value" } } },
   });
 
   // Test partial match with different formatting
-  const result1 = client.ExecuteTestQuery<{ test: { field: string } }>({
+  const result1 = client.executeTestQuery<{ test: { field: string } }>({
     query: "{test{field}}",
   });
   expect(result1?.data?.test.field).toBe("value");
 
   // Test non-matching query
-  const result2 = client.ExecuteTestQuery({
+  const result2 = client.executeTestQuery({
     query: "{ other { field } }",
   });
   expect(result2).toBeNull();
@@ -267,21 +267,21 @@ test("GraphQLTestClient with TypedDocumentString using variables", () => {
     toString: () => "query TestQuery($id: ID!) { test(id: $id) { field } }",
   } as TypedDocumentString<{ test: { field: string } }, { id: string }>;
 
-  client.AddTestQuery({
+  client.addTestQuery({
     query: document,
     variables: { id: "123" },
     result: { data: { test: { field: "value" } } },
   });
 
   // Test matching query and variables
-  const result1 = client.ExecuteTestQuery<{ test: { field: string } }, { id: string }>({
+  const result1 = client.executeTestQuery<{ test: { field: string } }, { id: string }>({
     query: "query TestQuery($id: ID!) { test(id: $id) { field } }",
     variables: { id: "123" },
   });
   expect(result1?.data?.test.field).toBe("value");
 
   // Test non-matching variables
-  const result2 = client.ExecuteTestQuery<{ test: { field: string } }, { id: string }>({
+  const result2 = client.executeTestQuery<{ test: { field: string } }, { id: string }>({
     query: "query TestQuery($id: ID!) { test(id: $id) { field } }",
     variables: { id: "456" },
   });

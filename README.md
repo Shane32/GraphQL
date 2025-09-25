@@ -202,7 +202,7 @@ Then you can use the client directly, or use one of the hooks.
 const client = React.useContext(GraphQLContext).client;
 
 // execute the query
-const result = await client.ExecuteQueryRaw<ProductQueryResult, ProductQueryVariables>({ query: productQuery, variables: { id: productId } }).result;
+const result = await client.executeQueryRaw<ProductQueryResult, ProductQueryVariables>({ query: productQuery, variables: { id: productId } }).result;
 ```
 
 ### useQuery hook
@@ -256,7 +256,7 @@ const ProductPriceUpdateComponent = ({ productId }) => {
     const client = React.useContext(GraphQLContext).client;
 
     useEffect(() => {
-        const { connected, abort } = client.ExecuteSubscription<ProductPriceSubscriptionResult, ProductPriceSubscriptionVariables>(
+        const { connected, abort } = client.executeSubscription<ProductPriceSubscriptionResult, ProductPriceSubscriptionVariables>(
             { query: priceUpdateSubscription, variables: { id: productId } },
             (data) => {
                 if (data.data) {
@@ -317,10 +317,10 @@ const client = new GraphQLClient({
 });
 ```
 
-Alternatively, you can set the timeout strategy for a specific subscription when calling `ExecuteSubscription`:
+Alternatively, you can set the timeout strategy for a specific subscription when calling `executeSubscription`:
 
 ```typescript
-const { connected, abort } = client.ExecuteSubscription(
+const { connected, abort } = client.executeSubscription(
     { query: subscription, variables: { id: "123" } },
     (data) => console.log(data),
     () => console.log("Subscription closed"),
@@ -361,7 +361,7 @@ const request = createRequest(
 );
 
 // Use with a client
-const result = await client.ExecuteQueryRaw(request).result;
+const result = await client.executeQueryRaw(request).result;
 ```
 
 This is useful when you need to create request objects outside of the provided hooks, or when building custom GraphQL client implementations.
@@ -391,14 +391,14 @@ This is useful when you need to create request objects outside of the provided h
 
 | Method | Description | Notes |
 |--------|-------------|-------|
-| `ExecuteQueryRaw<TData, TVariables>` | Execute a GraphQL query | |
-| `ExecuteQuery<TData, TVariables>` | Execute a GraphQL query with caching | |
-| `ExecuteSubscription<TData, TVariables>` | Execute a GraphQL subscription | |
-| `GetPendingRequests` | Get count of pending requests | |
-| `GetActiveSubscriptions` | Get count of active subscriptions | |
-| `RefreshAll` | Refresh all cached queries | The `force` option cancels any in-progress requests and forces all cached queries to be refetched from the server, even if they are currently loading |
-| `ClearCache` | Clear the query cache | |
-| `ResetStore` | Reset and refresh all cached queries | Should be used anytime the user is logged in/out to refresh permissions |
+| `executeQueryRaw<TData, TVariables>` | Execute a GraphQL query | |
+| `executeQuery<TData, TVariables>` | Execute a GraphQL query with caching | |
+| `executeSubscription<TData, TVariables>` | Execute a GraphQL subscription | |
+| `getPendingRequests` | Get count of pending requests | |
+| `getActiveSubscriptions` | Get count of active subscriptions | |
+| `refreshAll` | Refresh all cached queries | The `force` option cancels any in-progress requests and forces all cached queries to be refetched from the server, even if they are currently loading |
+| `clearCache` | Clear the query cache | |
+| `resetStore` | Reset and refresh all cached queries | Should be used anytime the user is logged in/out to refresh permissions |
 
 ### React Hooks
 
@@ -512,7 +512,7 @@ describe('GraphQL Tests', () => {
     );
 
     // Execute the query
-    const result = await testClient.ExecuteQueryRaw({
+    const result = await testClient.executeQueryRaw({
       query: 'query GetUser($id: ID!) { user(id: $id) { name email } }',
       variables: { id: '123' }
     }).result;
@@ -529,7 +529,7 @@ describe('GraphQL Tests', () => {
 
     // The query will throw the mocked error
     expect(() =>
-      testClient.ExecuteQueryRaw({
+      testClient.executeQueryRaw({
         query: 'query GetUser($id: ID!) { user(id: $id) { name } }',
         variables: { id: '999' }
       })
