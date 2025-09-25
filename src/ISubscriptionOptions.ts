@@ -12,7 +12,8 @@ interface ISubscriptionOptions {
 
   /**
    * The reconnection strategy to use for managing automatic reconnection attempts
-   * after unexpected disconnections.
+   * after unexpected disconnections. This can be an IReconnectionStrategy instance
+   * or a number representing a simple delay in milliseconds between reconnection attempts.
    */
   reconnectionStrategy?: IReconnectionStrategy | number | null;
 }
