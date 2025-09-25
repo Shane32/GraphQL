@@ -127,6 +127,8 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
           }
         },
       });
+
+      subscription.connected.catch(() => {});
     };
 
     connect();
