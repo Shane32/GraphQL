@@ -19,6 +19,8 @@ interface ISubscriptionFunctionOptions<TResult, TVariables> {
   onData?: (data: IQueryResult<TResult>) => void;
   /** The callback function to invoke when the subscription is closed. */
   onClose?: (reason: CloseReason) => void;
+  /** The callback function to invoke when the subscription connection is opened. */
+  onOpen?: () => void;
 }
 
 /**
@@ -41,6 +43,8 @@ interface IUseSubscriptionOptions<TResult, TVariables> extends ISubscriptionOpti
   onData?: (data: IQueryResult<TResult>) => void;
   /** The callback function to invoke when the subscription is closed. The latest function reference is always used. */
   onClose?: (reason: CloseReason) => void;
+  /** The callback function to invoke when the subscription connection is opened. The latest function reference is always used. */
+  onOpen?: () => void;
 }
 
 /**
@@ -62,6 +66,11 @@ type IUseSubscription = <TResult, TVariables = unknown>(
  * @param {string} query The GraphQL subscription string.
  * @param {IUseSubscriptionOptions<TResult, TVariables>} [options] The options for the subscription.
  * @returns {Array<Function>} A function that executes the subscription.
+ *
+ * @remarks
+ * The returned function is stable (referentially equal across renders) when:
+ * - The query, variables, operationName, and extensions when serialized have not changed
+ * - The client and timeoutStrategy are stable
  */
 const useSubscription: IUseSubscription = <TResult, TVariables = unknown>(
   query: string | TypedDocumentString<TResult, TVariables>,
@@ -72,10 +81,12 @@ const useSubscription: IUseSubscription = <TResult, TVariables = unknown>(
   // Store callback references in refs to always use the latest versions
   const onDataRef = useRef(options?.onData);
   const onCloseRef = useRef(options?.onClose);
+  const onOpenRef = useRef(options?.onOpen);
 
   // Update refs when options change
   onDataRef.current = options?.onData;
   onCloseRef.current = options?.onClose;
+  onOpenRef.current = options?.onOpen;
 
   const serializedQuery = useMemo(
     () =>
@@ -115,7 +126,12 @@ const useSubscription: IUseSubscription = <TResult, TVariables = unknown>(
         functionOptions?.onClose?.(reason);
       };
 
-      return client.ExecuteSubscription<TResult, TVariables>(request, onData, onClose, { timeoutStrategy });
+      const onOpen = () => {
+        onOpenRef.current?.();
+        functionOptions?.onOpen?.();
+      };
+
+      return client.ExecuteSubscription<TResult, TVariables>(request, onData, onClose, { onOpen, timeoutStrategy });
     },
     [client, serializedQuery, timeoutStrategy],
   );
