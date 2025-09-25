@@ -60,6 +60,12 @@ interface IGraphQLClient {
    * @param onClose The callback function to invoke when the subscription is closed, including the reason for closure.
    * @param options Optional subscription configuration.
    * @returns An object containing a promise that resolves when the subscription is connected and a function to abort the subscription.
+   *
+   * @remarks
+   * The following guarantees are provided for callback execution:
+   * - `onData` and `onOpen` will never be called after `onClose` has been invoked
+   * - `onClose` will always be called exactly once during the subscription lifecycle
+   * - `onClose` will be called synchronously from `abort()` if the subscription has not already been closed
    */
   ExecuteSubscription: <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,

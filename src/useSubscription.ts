@@ -66,6 +66,11 @@ type IUseSubscription = <TResult, TVariables = unknown>(
  * @param {string} query The GraphQL subscription string.
  * @param {IUseSubscriptionOptions<TResult, TVariables>} [options] The options for the subscription.
  * @returns {Array<Function>} A function that executes the subscription.
+ *
+ * @remarks
+ * The returned function is stable (referentially equal across renders) when:
+ * - The query, variables, operationName, and extensions when serialized have not changed
+ * - The client and timeoutStrategy are stable
  */
 const useSubscription: IUseSubscription = <TResult, TVariables = unknown>(
   query: string | TypedDocumentString<TResult, TVariables>,
