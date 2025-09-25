@@ -12,12 +12,10 @@ import ISubscriptionOptions from "./ISubscriptionOptions";
 export enum AutoSubscriptionState {
   /** The subscription is not connected */
   Disconnected = "Disconnected",
-  /** The subscription is in the process of connecting */
+  /** The subscription is in the process of connecting or reconnecting */
   Connecting = "Connecting",
   /** The subscription is connected and receiving data */
   Connected = "Connected",
-  /** The subscription encountered an error */
-  Error = "Error",
 }
 
 /**
@@ -74,114 +72,62 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
   options?: IUseAutoSubscriptionOptions<TResult, TVariables>,
 ): IUseAutoSubscriptionResult => {
   const [state, setState] = useState<AutoSubscriptionState>(AutoSubscriptionState.Disconnected);
-  const abortRef = useRef<(() => void) | null>(null);
-  const isConnectingRef = useRef(false);
 
   // Extract enabled flag, defaulting to true
   const enabled = options?.enabled !== false;
 
   // Store variables or variables function in a ref to always use the latest
-  const variablesRef = useRef(options?.variables);
-  variablesRef.current = options?.variables;
-
-  // Store onOpen handler in a ref to always use the latest
-  const onOpenRef = useRef(options?.onOpen);
-  onOpenRef.current = options?.onOpen;
+  const variablesFnRef = useRef<(() => NonNullable<TVariables>) | undefined>();
+  variablesFnRef.current =
+    options?.variables && typeof options.variables === "function" ? (options.variables as () => NonNullable<TVariables>) : undefined;
 
   // Prepare options for useSubscription (without variables)
   const subscriptionOptions = {
     guest: options?.guest,
     client: options?.client,
+    variables: options?.variables && typeof options.variables !== "function" ? options.variables : undefined,
     operationName: options?.operationName,
     extensions: options?.extensions,
     timeoutStrategy: options?.timeoutStrategy,
+    onOpen: options?.onOpen,
     onData: options?.onData,
-    onClose: (reason: CloseReason) => {
-      // Update state based on close reason
-      if (reason === CloseReason.Error || reason === CloseReason.Timeout) {
-        setState(AutoSubscriptionState.Error);
-      } else {
-        setState(AutoSubscriptionState.Disconnected);
-      }
-
-      // Clean up our tracking
-      isConnectingRef.current = false;
-      abortRef.current = null;
-
-      // Call user's onClose handler
-      options?.onClose?.(reason);
-    },
+    onClose: options?.onClose,
   };
 
   // Use the underlying subscription hook
   const [subscribe] = useSubscription(query, subscriptionOptions);
 
   useEffect(() => {
-    // If disabled, disconnect and return early
+    // If disabled, return early
     if (!enabled) {
-      if (abortRef.current) {
-        abortRef.current();
-        abortRef.current = null;
-        isConnectingRef.current = false;
-      }
-      setState(AutoSubscriptionState.Disconnected);
       return;
     }
 
-    // Prevent duplicate connection attempts
-    if (isConnectingRef.current || abortRef.current) {
-      return;
-    }
+    let subscription = { connected: Promise.resolve(), abort: () => {} };
 
-    // Start connecting
-    isConnectingRef.current = true;
-    setState(AutoSubscriptionState.Connecting);
+    const connect = () => {
+      // Start connecting
+      setState(AutoSubscriptionState.Connecting);
 
-    // Resolve variables if they're a function
-    const getVariables = () => {
-      const vars = variablesRef.current;
-      if (typeof vars === "function") {
-        return (vars as () => TVariables)();
-      }
-      return vars as TVariables | undefined;
+      // Execute the subscription
+      subscription = subscribe({
+        variables: variablesFnRef.current?.(),
+        onOpen: () => {
+          setState(AutoSubscriptionState.Connected);
+        },
+        onClose: (reason) => {
+          if (reason !== CloseReason.Client) {
+            // If not closed by us, try to reconnect
+            connect();
+          } else {
+            setState(AutoSubscriptionState.Disconnected);
+          }
+        },
+      });
     };
 
-    // Execute the subscription
-    const subscription = subscribe({
-      variables: getVariables(),
-    });
-
-    // Store abort function
-    abortRef.current = subscription.abort;
-
-    // Handle connection promise
-    subscription.connected
-      .then(() => {
-        // Only update state if we're still the active subscription
-        if (isConnectingRef.current && abortRef.current === subscription.abort) {
-          setState(AutoSubscriptionState.Connected);
-          // Call onOpen handler when successfully connected
-          onOpenRef.current?.();
-        }
-      })
-      .catch((error) => {
-        // Only update state if we're still the active subscription
-        if (isConnectingRef.current && abortRef.current === subscription.abort) {
-          setState(AutoSubscriptionState.Error);
-          console.error("Failed to connect subscription:", error);
-        }
-      })
-      .finally(() => {
-        isConnectingRef.current = false;
-      });
-
-    // Cleanup function
     return () => {
-      if (abortRef.current === subscription.abort) {
-        subscription.abort();
-        abortRef.current = null;
-        isConnectingRef.current = false;
-      }
+      subscription.abort();
     };
   }, [enabled, subscribe]);
 
