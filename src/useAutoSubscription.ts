@@ -5,6 +5,9 @@ import TypedDocumentString from "./TypedDocumentString";
 import useSubscription from "./useSubscription";
 import CloseReason from "./CloseReason";
 import ISubscriptionOptions from "./ISubscriptionOptions";
+import IReconnectionConnectionHandler from "./IReconnectionConnectionHandler";
+import useGraphQLClient from "./useGraphQLClient";
+import combineSubscriptionOptions from "./combineSubscriptionOptions";
 
 /**
  * Represents the possible states of an auto-subscription.
@@ -16,6 +19,12 @@ export enum AutoSubscriptionState {
   Connecting = "Connecting",
   /** The subscription is connected and receiving data */
   Connected = "Connected",
+  /** The subscription has failed and reconnection attempts have been exhausted */
+  Error = "Error",
+  /** The subscription was rejected by the server */
+  Rejected = "Rejected",
+  /** The subscription was completed by the server */
+  Completed = "Completed",
 }
 
 /**
@@ -71,7 +80,7 @@ const dummySubscription = { connected: Promise.resolve(), abort: () => {} };
  *
  * @remarks
  * The subscription will disconnect and reconnect when any of the following change:
- * - `client`, `query`, `operationName`, `extensions`, `enabled`, or `timeoutStrategy` options
+ * - `client`, `query`, `operationName`, `extensions`, `enabled`, `timeoutStrategy`, or `reconnectionStrategy` options
  * - `variables` when provided as an object (not as a function)
  */
 const useAutoSubscription = <TResult, TVariables = unknown>(
@@ -104,6 +113,10 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
   // Use the underlying subscription hook
   const [subscribe] = useSubscription(query, subscriptionOptions);
 
+  const client = useGraphQLClient(options && options.client, options && options.guest);
+  const effectiveOptions = combineSubscriptionOptions(client.defaultSubscriptionOptions, options);
+  const reconnectionStrategy = effectiveOptions.reconnectionStrategy ?? 5000; // Default to 5 second fixed delay
+
   useEffect(() => {
     // If disabled, return early
     if (!enabled) {
@@ -111,24 +124,62 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
     }
 
     let subscription = dummySubscription;
+    let reconnectionHandler: IReconnectionConnectionHandler | null = null;
+    let reconnectionTimeoutId: number | null = null;
 
     const connect = () => {
       // Start connecting
       setState(AutoSubscriptionState.Connecting);
+
+      // Create reconnection handler for this connection if we have a strategy
+      reconnectionHandler =
+        typeof reconnectionStrategy === "number" ? { onReconnectionAttempt: () => reconnectionStrategy } : reconnectionStrategy.attach();
 
       // Execute the subscription
       subscription = subscribe({
         variables: variablesFnRef.current?.(),
         onOpen: () => {
           setState(AutoSubscriptionState.Connected);
+          // Notify reconnection handler of successful connection
+          reconnectionHandler?.onConnected?.();
         },
         onClose: (reason) => {
           subscription = dummySubscription;
-          if (reason !== CloseReason.Client) {
-            // If not closed by us, try to reconnect
-            connect();
-          } else {
+
+          if (reason === CloseReason.Server) {
+            // Closed by server cleanly - clean up and set completed
+            reconnectionHandler?.onClose?.();
+            reconnectionHandler = null;
+            setState(AutoSubscriptionState.Completed);
+          } else if (reason === CloseReason.ServerError) {
+            // Subscription was rejected by server - clean up and set rejected
+            reconnectionHandler?.onClose?.();
+            reconnectionHandler = null;
+            setState(AutoSubscriptionState.Rejected);
+          } else if (reason === CloseReason.Client) {
+            // Closed by client - clean up and set disconnected
+            reconnectionHandler?.onClose?.();
+            reconnectionHandler = null;
             setState(AutoSubscriptionState.Disconnected);
+          } else {
+            // Unexpected close - check reconnection strategy
+            const decision = reconnectionHandler?.onReconnectionAttempt(reason) ?? 5000;
+            if (decision === -1) {
+              // Stop reconnecting, set Error state
+              setState(AutoSubscriptionState.Error);
+              reconnectionHandler?.onClose?.();
+              reconnectionHandler = null;
+            } else if (decision === 0) {
+              // Reconnect immediately
+              connect();
+            } else {
+              // Delayed reconnection
+              setState(AutoSubscriptionState.Connecting);
+              reconnectionTimeoutId = window.setTimeout(() => {
+                reconnectionTimeoutId = null;
+                connect();
+              }, decision);
+            }
           }
         },
       });
@@ -139,9 +190,18 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
     connect();
 
     return () => {
+      // Clean up timeout if pending
+      if (reconnectionTimeoutId !== null) {
+        window.clearTimeout(reconnectionTimeoutId);
+      }
+
+      // Clean up reconnection handler
+      reconnectionHandler?.onClose?.();
+
+      // Abort subscription
       subscription.abort();
     };
-  }, [enabled, subscribe]);
+  }, [enabled, subscribe, reconnectionStrategy]);
 
   return { state };
 };

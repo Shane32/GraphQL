@@ -121,6 +121,9 @@ const useAutoSubscriptionBasicTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -145,7 +148,7 @@ const useAutoSubscriptionBasicTest = async () => {
   expect(screen.getByText("Pokemon: blue")).toBeInTheDocument();
 
   // Wait for subscription to close and reconnect attempt
-  await waitFor(() => expect(screen.getByText("State: Connecting")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("State: Completed")).toBeInTheDocument());
 };
 
 it("useAutoSubscription basic functionality works", () => useAutoSubscriptionBasicTest());
@@ -212,6 +215,9 @@ const useAutoSubscriptionEnabledDisabledTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -265,6 +271,9 @@ const useAutoSubscriptionStartDisabledTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -387,6 +396,9 @@ const useAutoSubscriptionWithVariablesFunctionTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -470,6 +482,9 @@ const useAutoSubscriptionWithStaticVariablesTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(
@@ -547,7 +562,7 @@ const useAutoSubscriptionReconnectionTest = async () => {
         },
       },
       // Simulate server close
-      { kind: "message", data: { type: "complete", id: "1" } },
+      { kind: "close" },
     ],
   );
 
@@ -593,6 +608,9 @@ const useAutoSubscriptionReconnectionTest = async () => {
     const client = new GraphQLClient({
       url: "", // unused for subscriptions
       webSocketUrl: "ws://test/graphql",
+      defaultSubscriptionOptions: {
+        reconnectionStrategy: 0, // Immediate
+      },
     });
 
     render(

@@ -475,7 +475,7 @@ describe("CorrelatedPingStrategy Integration Tests", () => {
 
     expect(receivedData).toBeTruthy();
     expect(receivedClose).toBeTruthy();
-    expect(closeReason).toBe(CloseReason.Error);
+    expect(closeReason).toBe(CloseReason.ServerError);
     expect(errorData.errors).toBeTruthy();
     expect(errorData.errors[0].message).toContain("invalidField");
   });

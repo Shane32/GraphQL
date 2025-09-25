@@ -3,6 +3,7 @@ import IQueryResponse from "./IQueryResponse";
 import IQueryResult from "./IQueryResult";
 import CloseReason from "./CloseReason";
 import IExecuteSubscriptionOptions from "./IExecuteSubscriptionOptions";
+import ISubscriptionOptions from "./ISubscriptionOptions";
 
 /**
  * Represents a client for making GraphQL requests.
@@ -90,6 +91,11 @@ interface IGraphQLClient {
    * Refreshes all cached queries in use and removes all other cache entries.  Any queries in use have their data cleared immediately.
    */
   ResetStore: () => void;
+
+  /**
+   * Gets the default subscription options for this client.
+   */
+  readonly defaultSubscriptionOptions?: ISubscriptionOptions;
 }
 
 export default IGraphQLClient;
