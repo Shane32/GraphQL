@@ -10,6 +10,7 @@ import ISubscriptionOptions from "./ISubscriptionOptions";
 import combineSubscriptionOptions from "./combineSubscriptionOptions";
 import ClientMsg from "./ClientMsg";
 import ITimeoutConnectionHandler from "./ITimeoutConnectionHandler";
+import IExecuteSubscriptionOptions from "./IExecuteSubscriptionOptions";
 
 interface ICacheEntry {
   queryAndVariablesString: string;
@@ -333,7 +334,7 @@ export default class GraphQLClient implements IGraphQLClient {
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
     onClose: (reason: CloseReason) => void,
-    options?: ISubscriptionOptions,
+    options?: IExecuteSubscriptionOptions,
   ) => {
     this.activeSubscriptions += 1;
     const subscriptionId = "1";
@@ -344,22 +345,15 @@ export default class GraphQLClient implements IGraphQLClient {
 
     // set up abort
     let aborted = false;
-    let closeReason: CloseReason = undefined!; // always set by doAbort before used by abortPromise
-    let doAbort: (reason: CloseReason) => void = null!;
     let timeoutHandler: ITimeoutConnectionHandler | null = null;
-    const abortPromise = new Promise<void>((doAbort2) => {
-      doAbort = (reason) => {
-        closeReason = reason;
-        doAbort2();
-      };
-    });
-    // abort will set aborted and call onClose
-    abortPromise.then(() => {
-      this.activeSubscriptions -= 1;
-      aborted = true;
-      timeoutHandler?.onClose?.(closeReason);
-      onClose(closeReason);
-    });
+    let doAbort = (reason: CloseReason) => {
+      if (!aborted) {
+        aborted = true;
+        this.activeSubscriptions -= 1;
+        timeoutHandler?.onClose?.(reason);
+        onClose(reason);
+      }
+    };
     // set up data push
     const doData = (data: IQueryResult<TReturn>) => {
       if (!aborted) onData(data);
@@ -386,12 +380,14 @@ export default class GraphQLClient implements IGraphQLClient {
     // set up connection promise
     const connectionPromise = new Promise<void>((resolveConnection, rejectConnection) => {
       let connectionResolved = false;
-      abortPromise.then(() => {
+      const oldDoAbort = doAbort;
+      doAbort = (reason) => {
+        oldDoAbort(reason);
         if (!connectionResolved) {
           connectionResolved = true;
           rejectConnection();
         }
-      });
+      };
       // attempt to generate the connection payload
       let payloadPromise: Promise<{} | undefined>;
       if (this.generatePayload) {
@@ -410,9 +406,15 @@ export default class GraphQLClient implements IGraphQLClient {
           const webSocket = new WebSocket(this.webSocketUrl, "graphql-transport-ws");
 
           // set up abort/close
-          abortPromise.then(() => {
-            webSocket.close();
-          });
+          const oldDoAbort2 = doAbort;
+          doAbort = (reason) => {
+            // First call the original abort handler (which sets aborted = true)
+            oldDoAbort2(reason);
+            // Then close the WebSocket if needed (aborted is now true, so onclose won't call doError)
+            if (webSocket.readyState !== 3 /* CLOSED */) {
+              webSocket.close(reason === CloseReason.Timeout ? 4408 : 1000); // 4408 = Connection Timeout, 1000 = Normal Closure
+            }
+          };
 
           // define send function
           const send = (msg: ClientMsg) => {
@@ -477,6 +479,7 @@ export default class GraphQLClient implements IGraphQLClient {
                 if (!connectionResolved) {
                   connectionResolved = true;
                   resolveConnection();
+                  options?.onOpen?.();
                 }
                 timeoutHandler?.onAck?.();
                 send({
@@ -524,6 +527,9 @@ export default class GraphQLClient implements IGraphQLClient {
 
           // when websocket closed, notify caller (only raises error if not closed from this end)
           webSocket.onclose = (ev: CloseEvent) => {
+            if (aborted) {
+              return;
+            }
             // Log WebSocket connection error if the callback is defined
             if (this.logWebSocketConnectionError) {
               const connectionMessage = {
