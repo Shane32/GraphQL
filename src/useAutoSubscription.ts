@@ -56,6 +56,8 @@ export interface IUseAutoSubscriptionResult {
   state: AutoSubscriptionState;
 }
 
+const dummySubscription = { connected: Promise.resolve(), abort: () => {} };
+
 /**
  * A hook that automatically manages a GraphQL subscription lifecycle.
  * The subscription is established when the component mounts (or when enabled becomes true)
@@ -103,7 +105,7 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
       return;
     }
 
-    let subscription = { connected: Promise.resolve(), abort: () => {} };
+    let subscription = dummySubscription;
 
     const connect = () => {
       // Start connecting
@@ -116,6 +118,7 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
           setState(AutoSubscriptionState.Connected);
         },
         onClose: (reason) => {
+          subscription = dummySubscription;
           if (reason !== CloseReason.Client) {
             // If not closed by us, try to reconnect
             connect();
@@ -125,6 +128,8 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
         },
       });
     };
+
+    connect();
 
     return () => {
       subscription.abort();
