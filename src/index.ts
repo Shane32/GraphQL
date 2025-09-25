@@ -23,6 +23,7 @@ export { default as CorrelatedPingStrategy } from "./CorrelatedPingStrategy";
 export { default as IReconnectionStrategy } from "./IReconnectionStrategy";
 export { default as IReconnectionConnectionHandler } from "./IReconnectionConnectionHandler";
 export { default as DelayedReconnectionStrategy } from "./DelayedReconnectionStrategy";
+export { default as BackoffReconnectionStrategy } from "./BackoffReconnectionStrategy";
 
 export { default as GraphQLTestClient } from "./GraphQLTestClient";
 export { default as IGraphQLTestConfig } from "./IGraphQLTestConfig";

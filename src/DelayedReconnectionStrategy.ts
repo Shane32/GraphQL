@@ -18,6 +18,10 @@ class DelayedReconnectionConnectionHandler implements IReconnectionConnectionHan
    * Increments the attempt counter and determines the reconnection behavior.
    */
   onReconnectionAttempt(reason: CloseReason): number {
+    if (reason === CloseReason.Server || reason === CloseReason.ServerError) {
+      return -1; // Don't reconnect for server-initiated closures
+    }
+
     this.attemptCount++;
 
     // If maxAttempts is 0, allow unlimited attempts

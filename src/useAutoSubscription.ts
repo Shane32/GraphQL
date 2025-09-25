@@ -133,7 +133,12 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
 
       // Create reconnection handler for this connection if we have a strategy
       reconnectionHandler =
-        typeof reconnectionStrategy === "number" ? { onReconnectionAttempt: () => reconnectionStrategy } : reconnectionStrategy.attach();
+        typeof reconnectionStrategy === "number"
+          ? {
+              onReconnectionAttempt: (reason: CloseReason) =>
+                reason === CloseReason.Server || reason === CloseReason.ServerError ? -1 : reconnectionStrategy,
+            }
+          : reconnectionStrategy.attach();
 
       // Execute the subscription
       subscription = subscribe({
@@ -146,40 +151,32 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
         onClose: (reason) => {
           subscription = dummySubscription;
 
-          if (reason === CloseReason.Server) {
-            // Closed by server cleanly - clean up and set completed
+          // Check reconnection strategy to see if we should try to reconnect (except for Client closures)
+          const decision = reason === CloseReason.Client ? -1 : (reconnectionHandler?.onReconnectionAttempt(reason) ?? 5000);
+          if (decision === -1) {
+            // Stop reconnecting, set Error state
+            setState(AutoSubscriptionState.Error);
             reconnectionHandler?.onClose?.();
             reconnectionHandler = null;
-            setState(AutoSubscriptionState.Completed);
-          } else if (reason === CloseReason.ServerError) {
-            // Subscription was rejected by server - clean up and set rejected
-            reconnectionHandler?.onClose?.();
-            reconnectionHandler = null;
-            setState(AutoSubscriptionState.Rejected);
-          } else if (reason === CloseReason.Client) {
-            // Closed by client - clean up and set disconnected
-            reconnectionHandler?.onClose?.();
-            reconnectionHandler = null;
-            setState(AutoSubscriptionState.Disconnected);
-          } else {
-            // Unexpected close - check reconnection strategy
-            const decision = reconnectionHandler?.onReconnectionAttempt(reason) ?? 5000;
-            if (decision === -1) {
-              // Stop reconnecting, set Error state
-              setState(AutoSubscriptionState.Error);
-              reconnectionHandler?.onClose?.();
-              reconnectionHandler = null;
-            } else if (decision === 0) {
-              // Reconnect immediately
-              connect();
+            if (reason === CloseReason.Server) {
+              setState(AutoSubscriptionState.Completed);
+            } else if (reason === CloseReason.ServerError) {
+              setState(AutoSubscriptionState.Rejected);
+            } else if (reason === CloseReason.Client) {
+              setState(AutoSubscriptionState.Disconnected);
             } else {
-              // Delayed reconnection
-              setState(AutoSubscriptionState.Connecting);
-              reconnectionTimeoutId = window.setTimeout(() => {
-                reconnectionTimeoutId = null;
-                connect();
-              }, decision);
+              setState(AutoSubscriptionState.Error);
             }
+          } else if (decision === 0) {
+            // Reconnect immediately
+            connect();
+          } else {
+            // Delayed reconnection
+            setState(AutoSubscriptionState.Connecting);
+            reconnectionTimeoutId = window.setTimeout(() => {
+              reconnectionTimeoutId = null;
+              connect();
+            }, decision);
           }
         },
       });
