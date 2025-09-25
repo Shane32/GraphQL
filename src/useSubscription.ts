@@ -131,7 +131,7 @@ const useSubscription: IUseSubscription = <TResult, TVariables = unknown>(
         functionOptions?.onOpen?.();
       };
 
-      return client.ExecuteSubscription<TResult, TVariables>(request, onData, onClose, { onOpen, timeoutStrategy });
+      return client.executeSubscription<TResult, TVariables>(request, onData, onClose, { onOpen, timeoutStrategy });
     },
     [client, serializedQuery, timeoutStrategy],
   );

@@ -59,7 +59,7 @@ const useMutation: IUseMutation = <TResult, TVariables>(
       operationName: options?.operationName,
       extensions: options?.extensions,
     });
-    return client.ExecuteQueryRaw<TResult, TVariables>(request).result.then((data) => {
+    return client.executeQueryRaw<TResult, TVariables>(request).result.then((data) => {
       if (data.data && !(data.errors && data.errors.length) && !data.networkError)
         return Promise.resolve(data as IQuerySuccessfulResult<TResult>);
       return Promise.reject(new GraphQLError(data));

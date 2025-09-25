@@ -24,7 +24,7 @@ interface IQueryResponse<T> {
   /**
    * Subscribes to updates for the query result; execute the returned function to discontinue update notification.
    *
-   * Note that updates only typically occur if the cache mode is set to cache-first or cache-and-network and ExecuteQuery is called again.  This subscription is not tied to the server and there is no automatic refresh mechanism.
+   * Note that updates only typically occur if the cache mode is set to cache-first or cache-and-network and executeQuery is called again.  This subscription is not tied to the server and there is no automatic refresh mechanism.
    *
    * @param callback A callback function to be invoked when the query result changes.
    * @returns A function to release the subscription.

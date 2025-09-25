@@ -74,7 +74,7 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       ],
     );
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },
@@ -134,7 +134,7 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       ],
     );
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },
@@ -209,7 +209,7 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       ],
     );
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },
@@ -268,7 +268,7 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       ],
     );
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },
@@ -328,7 +328,7 @@ describe("IdleTimeoutStrategy Integration Tests", () => {
       ],
     );
 
-    const ret = client.ExecuteSubscription<{ liveData: { value: string } }>(
+    const ret = client.executeSubscription<{ liveData: { value: string } }>(
       {
         query: "subscription { liveData { value } }",
       },

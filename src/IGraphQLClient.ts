@@ -14,14 +14,14 @@ interface IGraphQLClient {
    *
    * @returns The number of pending requests.
    */
-  GetPendingRequests: () => number;
+  getPendingRequests: () => number;
 
   /**
    * Returns the number of active subscriptions.
    *
    * @returns The number of active subscriptions.
    */
-  GetActiveSubscriptions: () => number;
+  getActiveSubscriptions: () => number;
 
   /**
    * Executes a GraphQL query or mutation and returns a promise for the result; similar to the Fetch API. The caching layer is ignored; each call to this method will result in a new request to the server.
@@ -31,7 +31,7 @@ interface IGraphQLClient {
    * @param request The GraphQL request to execute.
    * @returns An object containing a promise for the query result and a function to abort the request.
    */
-  ExecuteQueryRaw: <TReturn, TVariables = undefined>(
+  executeQueryRaw: <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
   ) => { result: Promise<IQueryResult<TReturn>>; abort: () => void };
 
@@ -47,7 +47,7 @@ interface IGraphQLClient {
    * @param cacheTimeout The cache timeout to use for the query in milliseconds; uses the client's default cache timeout when unspecified.
    * @returns An object that can be used to retrieve the query response, monitor updates to it, or abort it.
    */
-  ExecuteQuery: <TReturn, TVariables = undefined>(
+  executeQuery: <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     cacheMode?: "no-cache" | "cache-first" | "cache-and-network",
     cacheTimeout?: number,
@@ -68,7 +68,7 @@ interface IGraphQLClient {
    * - `onClose` will always be called exactly once during the subscription lifecycle
    * - `onClose` will be called synchronously from `abort()` if the subscription has not already been closed
    */
-  ExecuteSubscription: <TReturn, TVariables = undefined>(
+  executeSubscription: <TReturn, TVariables = undefined>(
     request: IGraphQLRequest<TVariables>,
     onData: (data: IQueryResult<TReturn>) => void,
     onClose: (reason: CloseReason) => void,
@@ -80,17 +80,17 @@ interface IGraphQLClient {
    *
    * @param force If true, aborts any loading queries and retries them.
    */
-  RefreshAll: (force?: boolean) => void;
+  refreshAll: (force?: boolean) => void;
 
   /**
    * Clears the cache but does not trigger a refresh for queries in use.  Expires remaining queries.
    */
-  ClearCache: () => void;
+  clearCache: () => void;
 
   /**
    * Refreshes all cached queries in use and removes all other cache entries.  Any queries in use have their data cleared immediately.
    */
-  ResetStore: () => void;
+  resetStore: () => void;
 
   /**
    * Gets the default subscription options for this client.
