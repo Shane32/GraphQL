@@ -23,6 +23,7 @@ A TypeScript-first GraphQL client for React applications with built-in caching, 
 - [Advanced Configuration](#advanced-configuration)
 - [Usage](#usage)
 - [Subscription Timeout Strategies](#subscription-timeout-strategies)
+- [Subscription Reconnection Strategies](#subscription-reconnection-strategies)
 - [API Reference](#api-reference)
 - [Testing](#testing)
 - [GraphQL Codegen Support](#graphql-codegen-support)
@@ -195,14 +196,21 @@ interface ProductPriceSubscriptionVariables {
 
 Then you can use the client directly, or use one of the hooks.
 
-### Direct use - query/mutation
+### Direct use - query/mutation/subscription
 
 ```typescript
 // pull from context, if applicable
 const client = React.useContext(GraphQLContext).client;
 
-// execute the query
+// execute a query or mutation
 const result = await client.executeQueryRaw<ProductQueryResult, ProductQueryVariables>({ query: productQuery, variables: { id: productId } }).result;
+
+// execute a subscription
+const { connected, abort } = client.executeSubscription<ProductPriceSubscriptionResult, ProductPriceSubscriptionVariables>(
+    { query: priceUpdateSubscription, variables: { id: productId } },
+    (data) => { /* process data or errors sent from the server */ },
+    (reason) => { /* subscription closed */ }
+);
 ```
 
 ### useQuery hook
@@ -249,36 +257,82 @@ const UpdateProductPriceComponent = ({ productId }) => {
 };
 ```
 
-### Direct use - subscriptions
+### useSubscription hook
 
-```typescript
+The `useSubscription` hook provides a React-friendly way to execute GraphQL subscriptions with manual control over when the subscription starts and stops.
+
+```tsx
 const ProductPriceUpdateComponent = ({ productId }) => {
-    const client = React.useContext(GraphQLContext).client;
-
-    useEffect(() => {
-        const { connected, abort } = client.executeSubscription<ProductPriceSubscriptionResult, ProductPriceSubscriptionVariables>(
-            { query: priceUpdateSubscription, variables: { id: productId } },
-            (data) => {
+    const [subscribe] = useSubscription<ProductPriceSubscriptionResult, ProductPriceSubscriptionVariables>(
+        priceUpdateSubscription,
+        {
+            variables: { id: productId },
+            onData: (data) => {
                 if (data.data) {
                     console.log("New price:", data.data.priceUpdate.price);
                 } else {
                     console.error("Error:", data.errors);
                 }
             },
-            () => {
-                console.log("Subscription closed");
+            onClose: (reason) => {
+                console.log("Subscription closed:", reason);
+            },
+            onOpen: () => {
+                console.log("Subscription connected");
             }
-        );
+        }
+    );
+
+    useEffect(() => {
+        const { abort } = subscribe();
 
         return () => {
             abort();
         };
-    }, [client, productId, priceUpdateSubscription]);
+    }, [subscribe]); // subscribe is stable so long as the productId does not change
 
     return (
-      <div>
-        <p>Listening for price updates...</p>
-      </div>
+        <div>
+            <p>Listening for price updates...</p>
+        </div>
+    );
+};
+```
+
+### useAutoSubscription hook
+
+The `useAutoSubscription` hook provides automatic subscription lifecycle management with built-in reconnection capabilities. The subscription automatically connects when the component mounts and disconnects when it unmounts.
+
+```tsx
+import { useAutoSubscription, AutoSubscriptionState } from '@shane32/graphql';
+
+const ProductPriceUpdateComponent = ({ productId }) => {
+    const { state } = useAutoSubscription<ProductPriceSubscriptionResult, ProductPriceSubscriptionVariables>(
+        priceUpdateSubscription,
+        {
+            variables: { id: productId },
+            onData: (data) => {
+                if (data.data) {
+                    console.log("New price:", data.data.priceUpdate.price);
+                } else {
+                    console.error("Error:", data.errors);
+                }
+            },
+            onOpen: () => {
+                console.log("Subscription connected");
+            },
+            onClose: (reason) => {
+                console.log("Subscription closed:", reason);
+            },
+            enabled: true, // Can be used to enable/disable the subscription
+            reconnectionStrategy: new BackoffReconnectionStrategy(1000, 30000, 2.0, 10, true)
+        }
+    );
+
+    return (
+        <div>
+            <p>Status: {state}</p>
+        </div>
     );
 };
 ```
@@ -317,18 +371,91 @@ const client = new GraphQLClient({
 });
 ```
 
-Alternatively, you can set the timeout strategy for a specific subscription when calling `executeSubscription`:
+Alternatively, you can set the timeout strategy for a specific subscription when using `useSubscription`, `useAutoSubscription` or `executeSubscription`:
 
 ```typescript
-const { connected, abort } = client.executeSubscription(
-    { query: subscription, variables: { id: "123" } },
-    (data) => console.log(data),
-    () => console.log("Subscription closed"),
-    {
-        timeoutStrategy: new CorrelatedPingStrategy(5000, 10000, 3000)
-    }
-);
+const [subscribe] = useSubscription(subscription, {
+    variables: { id: "123" },
+    timeoutStrategy: new CorrelatedPingStrategy(5000, 10000, 3000),
+    onData: (data) => console.log(data),
+    onClose: () => console.log("Subscription closed")
+});
 ```
+
+## Subscription Reconnection Strategies
+
+The `useAutoSubscription` hook supports configurable reconnection strategies to handle connection failures and automatic reconnection. You can set a default reconnection strategy for all auto-subscriptions or specify one per subscription.
+
+**Fixed Delay Reconnection** - A simple strategy that waits a fixed delay between reconnection attempts:
+
+```typescript
+// Reconnect after 5 seconds
+const { state } = useAutoSubscription(subscription, {
+    variables: { id: "123" },
+    reconnectionStrategy: 5000, // Simple number for fixed delay
+    onData: (data) => console.log(data)
+});
+```
+
+**DelayedReconnectionStrategy** - A more configurable fixed delay strategy:
+
+```typescript
+import { DelayedReconnectionStrategy } from '@shane32/graphql';
+
+// Wait 3 seconds between attempts, maximum 8 attempts
+const delayedStrategy = new DelayedReconnectionStrategy(3000, 8);
+
+const { state } = useAutoSubscription(subscription, {
+    variables: { id: "123" },
+    reconnectionStrategy: delayedStrategy,
+    onData: (data) => console.log(data)
+});
+```
+
+**BackoffReconnectionStrategy** - Implements exponential backoff with optional jitter to prevent thundering herd problems:
+
+```typescript
+import { BackoffReconnectionStrategy } from '@shane32/graphql';
+
+// Parameters: initialDelayMs, maxDelayMs, backoffMultiplier, maxAttempts, jitterEnabled
+const backoffStrategy = new BackoffReconnectionStrategy(1000, 30000, 2.0, 10, true);
+
+const { state } = useAutoSubscription(subscription, {
+    variables: { id: "123" },
+    reconnectionStrategy: backoffStrategy,
+    onData: (data) => console.log(data)
+});
+```
+
+The `BackoffReconnectionStrategy` also provides preset configurations:
+
+```typescript
+// Aggressive reconnection for quick recovery
+const aggressive = BackoffReconnectionStrategy.createAggressive();
+
+// Conservative reconnection to reduce server load
+const conservative = BackoffReconnectionStrategy.createConservative();
+```
+
+You can set the default reconnection strategy within the `defaultSubscriptionOptions` configuration setting:
+
+```typescript
+const client = new GraphQLClient({
+    url: 'https://api.example.com/graphql',
+    webSocketUrl: 'wss://api.example.com/graphql',
+    defaultSubscriptionOptions: {
+        reconnectionStrategy: new BackoffReconnectionStrategy(1000, 30000, 2.0, 10, true)
+    }
+});
+```
+
+**Reconnection Behavior:**
+
+- Reconnection strategies only apply to `useAutoSubscription`
+- Server-initiated closures (normal completion or errors) do not trigger reconnection
+- Client-initiated closures (manual abort) do not trigger reconnection
+- Network failures and unexpected disconnections will trigger reconnection based on the strategy
+- Each connection maintains independent reconnection state
 
 ## GraphQL Codegen Support
 
@@ -372,20 +499,20 @@ This is useful when you need to create request objects outside of the provided h
 
 #### Constructor Options
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `url` (required) | - | GraphQL endpoint URL |
-| `webSocketUrl` | - | WebSocket endpoint URL for subscriptions |
-| `defaultFetchPolicy` | `'cache-first'` | Default caching strategy. Options: `'cache-first'`, `'no-cache'`, `'cache-and-network'` |
-| `defaultCacheTime` | `86400000` | Cache duration in milliseconds (24 hours) |
-| `maxCacheSize` | `20971520` | Maximum cache size in bytes (20MB) |
-| `asForm` | `false` | Use form data instead of JSON for requests |
-| `sendDocumentIdAsQuery` | `false` | Include documentId as query parameter instead of POST body |
-| `transformRequest` | - | Transform requests (e.g., add auth headers) |
-| `generatePayload` | - | Generate WebSocket connection payload |
-| `defaultSubscriptionOptions` | - | Default options for subscriptions (e.g. timeout strategy) |
-| `logHttpError` | - | Log HTTP errors |
-| `logWebSocketConnectionError` | - | Log WebSocket errors |
+| Parameter                     | Default         | Description |
+|-------------------------------|-----------------|-------------|
+| `url` (required)              | -               | GraphQL endpoint URL |
+| `webSocketUrl`                | -               | WebSocket endpoint URL for subscriptions |
+| `defaultFetchPolicy`          | `'cache-first'` | Default caching strategy. Options: `'cache-first'`, `'no-cache'`, `'cache-and-network'` |
+| `defaultCacheTime`            | `86400000`      | Cache duration in milliseconds (24 hours) |
+| `maxCacheSize`                | `20971520`      | Maximum cache size in bytes (20MB) |
+| `asForm`                      | `false`         | Use form data instead of JSON for requests |
+| `sendDocumentIdAsQuery`       | `false`         | Include documentId as query parameter instead of POST body |
+| `transformRequest`            | -               | Transform requests (e.g., add auth headers) |
+| `generatePayload`             | -               | Generate WebSocket connection payload |
+| `defaultSubscriptionOptions`  | -               | Default options for subscriptions (timeout & reconnection strategies) |
+| `logHttpError`                | -               | Log HTTP errors |
+| `logWebSocketConnectionError` | -               | Log WebSocket errors |
 
 #### Methods
 
@@ -454,6 +581,71 @@ Execute a GraphQL mutation.
 | Index | Description |
 |-------|-------------|
 | `[0]` | Mutation function that returns a promise |
+
+#### useSubscription<TData, TVariables>
+
+Execute a GraphQL subscription with manual control over when the subscription starts and stops.
+
+**Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `query` (required) | GraphQL subscription string or typed document |
+| `options` | Subscription options |
+| `options.variables` | Subscription variables |
+| `options.client` | Client instance or name from context |
+| `options.guest` | Whether to use the guest client |
+| `options.operationName` | The name of the operation |
+| `options.extensions` | Additional extensions to add to the subscription |
+| `options.timeoutStrategy` | Timeout strategy for the subscription |
+| `options.onData` | Callback function to invoke when new data is received |
+| `options.onClose` | Callback function to invoke when the subscription is closed |
+| `options.onOpen` | Callback function to invoke when the subscription connection is opened |
+
+**Returns:**
+
+| Index | Description |
+|-------|-------------|
+| `[0]` | Subscription function that returns `{ connected: Promise<void>; abort: () => void }` |
+
+#### useAutoSubscription<TData, TVariables>
+
+Execute a GraphQL subscription with automatic lifecycle management and reconnection capabilities.
+
+**Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `query` (required) | GraphQL subscription string or typed document |
+| `options` | Auto-subscription options |
+| `options.variables` | Subscription variables or function that returns variables |
+| `options.client` | Client instance or name from context |
+| `options.guest` | Whether to use the guest client |
+| `options.operationName` | The name of the operation |
+| `options.extensions` | Additional extensions to add to the subscription |
+| `options.timeoutStrategy` | Timeout strategy for the subscription |
+| `options.reconnectionStrategy` | Reconnection strategy for automatic reconnection |
+| `options.enabled` | Whether the subscription should be enabled (default: true) |
+| `options.onData` | Callback function to invoke when new data is received |
+| `options.onClose` | Callback function to invoke when the subscription is closed |
+| `options.onOpen` | Callback function to invoke when the subscription connection is opened |
+
+**Returns:**
+
+| Property | Description |
+|----------|-------------|
+| `state` | Current state of the subscription (AutoSubscriptionState enum) |
+
+**AutoSubscriptionState Values:**
+
+| State | Description |
+|-------|-------------|
+| `Disconnected` | The subscription is not connected |
+| `Connecting` | The subscription is in the process of connecting or reconnecting |
+| `Connected` | The subscription is connected and receiving data |
+| `Error` | The subscription has failed and reconnection attempts have been exhausted |
+| `Rejected` | The subscription was rejected by the server |
+| `Completed` | The subscription was completed by the server |
 
 ### Context
 
