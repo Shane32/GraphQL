@@ -9,7 +9,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Check github.ref starts with 'refs/tags/'
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: |
@@ -24,7 +24,7 @@ jobs:
           echo $ref
           echo "ref=$ref" >> $GITHUB_ENV
       - name: Setup .npmrc file to publish to npm
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
@@ -32,10 +32,16 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-#      - name: Publish to npm
-#        run: npm publish --access public
-#        env:
-#          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Configure package name, url, and version
+        env:
+          github_repo: ${{ github.repository }}
+        run: node tools/updateurl $github_repo $ref
+      - name: Clean package.json
+        run: node tools/prepare-publish
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Setup .npmrc file to publish to GitHub Packages
         uses: actions/setup-node@v3
         with:
