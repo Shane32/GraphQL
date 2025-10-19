@@ -31,7 +31,7 @@
     "graphql"
   ],
   "author": "Shane Krueger <shane@acdmail.com>",
-  "license": "Private",
+  "license": "MIT",
   "homepage": "https://github.com/dummy/dummy",
   "repository": {
     "type": "git",
