@@ -459,7 +459,7 @@ const client = new GraphQLClient({
 
 ## GraphQL Codegen Support
 
-If you want to add GraphQL Codegen to your project, refer to [CODEGEN-README.md](./CODEGEN-README.md)
+If you want to add GraphQL Codegen to your project, refer to [CODEGEN-README.md](https://github.com/Shane32/GraphQL/blob/main/CODEGEN-README.md)
 
 ## Creating Request Objects
 
