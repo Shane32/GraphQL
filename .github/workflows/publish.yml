@@ -5,6 +5,10 @@ on:
     types:
       - published
 
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -40,8 +44,8 @@ jobs:
         run: node tools/prepare-publish
       - name: Publish to npm
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+#        env:
+#          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Setup .npmrc file to publish to GitHub Packages
         uses: actions/setup-node@v4
         with:
