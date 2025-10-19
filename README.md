@@ -3,7 +3,7 @@
 A TypeScript-first GraphQL client for React applications with built-in caching, subscriptions, and testing utilities.
 
 [![NPM Version](https://img.shields.io/npm/v/%40shane32%2Fgraphql)](https://www.npmjs.com/package/@shane32/graphql)
-[![License: Private](https://img.shields.io/badge/License-Private-red.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Features
 
