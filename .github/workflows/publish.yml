@@ -27,6 +27,15 @@ jobs:
           ref="${github_ref:10}"
           echo $ref
           echo "ref=$ref" >> $GITHUB_ENV
+          # Detect if this is a prerelease version (contains -, like 1.0.0-beta.1)
+          if [[ "$ref" == *"-"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_ENV
+            # Extract the prerelease tag (e.g., "beta" from "1.0.0-beta.1")
+            prerelease_tag=$(echo "$ref" | sed -E 's/[0-9]+\.[0-9]+\.[0-9]+-([a-zA-Z]+).*/\1/')
+            echo "prerelease_tag=$prerelease_tag" >> $GITHUB_ENV
+          else
+            echo "is_prerelease=false" >> $GITHUB_ENV
+          fi
       - name: Setup .npmrc file to publish to npm
         uses: actions/setup-node@v5
         with:
@@ -43,7 +52,12 @@ jobs:
       - name: Clean package.json
         run: node tools/prepare-publish
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: |
+          if [ "${{ env.is_prerelease }}" = "true" ]; then
+            npm publish --provenance --access public --tag ${{ env.prerelease_tag }}
+          else
+            npm publish --provenance --access public
+          fi
 #        env:
 #          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Setup .npmrc file to publish to GitHub Packages
@@ -58,6 +72,11 @@ jobs:
       - name: Clean package.json
         run: node tools/prepare-publish
       - name: Publish to GitHub Packages
-        run: npm publish
+        run: |
+          if [ "${{ env.is_prerelease }}" = "true" ]; then
+            npm publish --tag ${{ env.prerelease_tag }}
+          else
+            npm publish
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
