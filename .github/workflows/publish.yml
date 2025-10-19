@@ -37,7 +37,7 @@ jobs:
             echo "is_prerelease=false" >> $GITHUB_ENV
           fi
       - name: Setup .npmrc file to publish to npm
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
@@ -61,7 +61,7 @@ jobs:
 #        env:
 #          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Setup .npmrc file to publish to GitHub Packages
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24.x'
           registry-url: 'https://npm.pkg.github.com'
