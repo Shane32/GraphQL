@@ -43,7 +43,7 @@ jobs:
       - name: Clean package.json
         run: node tools/prepare-publish
       - name: Publish to npm
-        run: npm publish --access public
+        run: npm publish --provenance --access public
 #        env:
 #          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Setup .npmrc file to publish to GitHub Packages
