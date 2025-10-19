@@ -54,9 +54,9 @@ jobs:
       - name: Publish to npm
         run: |
           if [ "${{ env.is_prerelease }}" = "true" ]; then
-            npm publish --provenance --access public --tag ${{ env.prerelease_tag }}
+            npm publish --access public --tag ${{ env.prerelease_tag }}
           else
-            npm publish --provenance --access public
+            npm publish --access public
           fi
 #        env:
 #          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
