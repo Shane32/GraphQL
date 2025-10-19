@@ -77,7 +77,7 @@ const useQuery: <TResult, TVariables = unknown>(
 ) => {
   const client = useGraphQLClient(options && options.client, options && options.guest);
   const currentVariables = options?.variables;
-  const lastQueryResponseRef = React.useRef<IQueryResult<TResult>>();
+  const lastQueryResponseRef = React.useRef<IQueryResult<TResult> | undefined>(undefined);
   const queryRet = React.useMemo<IQueryResponse<TResult> | null>(() => {
     // any time the options change, reset any cached returned value
     lastQueryResponseRef.current = undefined;

@@ -93,7 +93,7 @@ const useAutoSubscription = <TResult, TVariables = unknown>(
   const enabled = options?.enabled !== false;
 
   // Store variables or variables function in a ref to always use the latest
-  const variablesFnRef = useRef<(() => NonNullable<TVariables>) | undefined>();
+  const variablesFnRef = useRef<(() => NonNullable<TVariables>) | undefined>(undefined);
   variablesFnRef.current =
     options?.variables && typeof options.variables === "function" ? (options.variables as () => NonNullable<TVariables>) : undefined;
 
